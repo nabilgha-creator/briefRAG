@@ -33,6 +33,6 @@ IDdocument int references document(IDdocument),
 Modele varchar(50) references Modele(Modele),
 Code_erreur varchar(20),
 Chunk text not null,
-vecteur vector(1536),          -- dimension a adapter au modele d'embedding
+vecteur vector(1024),          -- dimension a adapter au modele d'embedding
 FOREIGN KEY (Modele, Code_erreur) REFERENCES Erreur(Modele, Code_erreur)
 );
