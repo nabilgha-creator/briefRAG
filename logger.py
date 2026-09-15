@@ -1,5 +1,5 @@
 import logging
-from chemin import DOCS
+from backend.chemin import DOCS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
