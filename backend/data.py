@@ -4,20 +4,24 @@ from chemin import DOCS , ASSETS
 from langchain_docling import DoclingLoader
 import json
 
-from chunker import chunker
+from chunker import chunker , chunker_ligne
 
 
 
-EXTENSIONS = {".pdf" , ".docx" , ".csv" , ".xlsx" , ".html"}
+EXTENSIONS = {".pdf" , ".docx" , ".xlsx" , ".html"}
 
 files = [c for c in DOCS.rglob("*") if c.is_file() and not c.name.startswith("~$") and c.suffix.lower() in EXTENSIONS]
 
-def charger_doc (fichier : list[str] | str) :
+def charger_doc (fichier : list[Path] | str) :
     liste_doc = []
 
     for x in fichier : 
-        try:
-            loader = DoclingLoader(file_path= str(x) , chunker=chunker)
+        if str(x).endswith(".xlsx"):
+            loader = DoclingLoader(file_path=str(x), chunker=chunker_ligne)
+        else :
+           loader = DoclingLoader(file_path= str(x) , chunker=chunker) 
+        
+        try: 
             doc = loader.load()
             liste_doc.extend(doc)
             
