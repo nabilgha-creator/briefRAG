@@ -13,7 +13,7 @@ tokenizer = HuggingFaceTokenizer(
 
 ligne_tokenizer = HuggingFaceTokenizer(
     tokenizer=AutoTokenizer.from_pretrained("BAAI/bge-m3"),
-    max_tokens= 2000
+    max_tokens= 300
 )
 
 chunker = HybridChunker(tokenizer=tokenizer, merge_peers=True)

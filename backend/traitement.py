@@ -1,5 +1,5 @@
 import json 
-from db import get_connection
+from backend.database.db import get_connection
 from chemin import ASSETS
 
 
