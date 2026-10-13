@@ -27,10 +27,11 @@ MOTS_QUESTION_COURTE = 8                                 # en dessous, la questi
 
 @dataclass
 class Appareils :
-    """ce que la conversation dit de l'appareil concerné"""
-    modele : str | None = None              # WX-500
-    type_appareil : str | None = None       # Lave-linge
-    modeles : list[str] = field(default_factory=list)     # modèles a considérer : le modèle, ou tous ceux du type ; vide = inconnu
+    """ce que la conversation dit des appareils concernés (une question peut en citer plusieurs)"""
+    modele : str | None = None              # un seul modèle cité, sans autre appareil : WX-500
+    type_appareil : str | None = None       # type(s) concerné(s) : "Lave-linge", "Lave-linge et Fours encastrables"
+    modeles : list[str] = field(default_factory=list)     # modèles a considérer (filtre de recherche) ; vide = inconnu
+    modeles_cites : list[str] = field(default_factory=list)   # modèles nommés dans la question
 
 
 @dataclass
@@ -108,17 +109,21 @@ def _motif_type(type_appareil : str) -> re.Pattern[str] :
 
 
 def analyser_appareils(textes : list[str], modeles : list[Modele]) -> Appareils :
-    """textes du plus récent au plus ancien (la question puis les messages précédents) :
-    le premier qui cite un modèle, ou a défaut un type d'appareil, l'emporte"""
+    """textes du plus récent au plus ancien (la question puis les messages précédents) : le premier qui cite
+    un appareil l'emporte, avec TOUS les modèles et types qu'il cite ("lave-linge et fours" -> les deux gammes).
+    un type n'est étendu a toute sa gamme que si aucun modèle de ce type n'est cité ("mon lave-linge WX-500" -> WX-500)"""
     types = sorted({modele.type for modele in modeles if modele.type})
     for texte in textes :
-        for modele in modeles :
-            if _motif_modele(modele.modele).search(texte) :
-                return Appareils(modele=modele.modele, type_appareil=modele.type, modeles=[modele.modele])
-        for type_appareil in types :
-            if _motif_type(type_appareil).search(texte) :
-                return Appareils(type_appareil=type_appareil,
-                                 modeles=[modele.modele for modele in modeles if modele.type == type_appareil])
+        cites = [modele for modele in modeles if _motif_modele(modele.modele).search(texte)]
+        types_cites = [type_appareil for type_appareil in types if _motif_type(type_appareil).search(texte)]
+        if not cites and not types_cites :
+            continue
+        types_a_etendre = [type_appareil for type_appareil in types_cites if all(modele.type != type_appareil for modele in cites)]
+        a_considerer = [modele.modele for modele in cites] + [modele.modele for modele in modeles if modele.type in types_a_etendre]
+        types_concernes = list(dict.fromkeys([modele.type for modele in cites if modele.type] + types_a_etendre))
+        return Appareils(modele=cites[0].modele if len(cites) == 1 and not types_a_etendre else None,
+                         type_appareil=" et ".join(types_concernes) or None,
+                         modeles=a_considerer, modeles_cites=[modele.modele for modele in cites])
     return Appareils()
 
 
@@ -146,6 +151,21 @@ def _appareils_des_codes(session : Session, codes : list[str], modeles : list[Mo
         return Appareils()
     type_appareil = types.pop()
     return Appareils(type_appareil=type_appareil, modeles=[modele.modele for modele in modeles if modele.type == type_appareil])
+
+
+def _rechercher_equilibre(session : Session, vecteur : list[float], a_considerer : list[str], modeles : list[Modele],
+                          categories : list[str] | None) -> list[tuple[Chunk, float]] :
+    """extraits les plus proches. si la question couvre plusieurs types d'appareils ("lave-linge et fours"),
+    chaque type a son propre lot : sinon le type dont les textes ressemblent le plus a la question prend toute la place"""
+    type_du_modele = {modele.modele : modele.type for modele in modeles}
+    groupes : dict[str | None, list[str]] = {}
+    for nom in a_considerer :
+        groupes.setdefault(type_du_modele.get(nom), []).append(nom)
+    if len(groupes) <= 1 :
+        return rechercher_chunks(session, vecteur, NB_EXTRAITS, modeles=a_considerer or None, categories=categories)
+    par_groupe = max(2, -(-NB_EXTRAITS // len(groupes)))       # arrondi au supérieur
+    return [paire for noms in groupes.values()
+            for paire in rechercher_chunks(session, vecteur, par_groupe, modeles=noms, categories=categories)]
 
 
 def _texte_de_recherche(question : str, questions_precedentes : list[str]) -> str :
@@ -179,7 +199,7 @@ def rechercher_contexte(session : Session, question : str, questions_precedentes
 
     vecteur = vectoriser_question(_texte_de_recherche(question, questions_precedentes))
     filtre = appareils.modeles or None
-    proches = rechercher_chunks(session, vecteur, NB_EXTRAITS, modeles=filtre, categories=categories)
+    proches = _rechercher_equilibre(session, vecteur, appareils.modeles, modeles, categories)
     lies = (rechercher_chunks(session, vecteur, NB_EXTRAITS_LIES_AUX_ERREURS, modeles=filtre, ids_erreurs=ids_erreurs, categories=categories)
             if ids_erreurs else [])
 

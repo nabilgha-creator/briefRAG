@@ -43,7 +43,8 @@ def _appareil(contexte : Contexte) -> str :
     if appareils.modele :
         return f"Appareil : {appareils.modele} ({appareils.type_appareil})"
     if appareils.type_appareil :
-        return f"Appareil : {appareils.type_appareil}, modèle non précisé"
+        precision = f"modèles cités : {', '.join(appareils.modeles_cites)}" if appareils.modeles_cites else "modèle non précisé"
+        return f"Appareils : {appareils.type_appareil}, {precision}"
     return "Appareil : non précisé"
 
 
