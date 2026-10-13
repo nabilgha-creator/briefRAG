@@ -47,9 +47,10 @@ def historique_conversation(session : Session, conversation : Conversation) -> l
             for message in derniers_messages(session, conversation, MAX_MESSAGES_HISTORIQUE)]
 
 
-def preparer(session : Session, question : str, historique : list[dict[str, str]]) -> Preparation :
+def preparer(session : Session, question : str, historique : list[dict[str, str]], categories : list[str] | None = None) -> Preparation :
+    """categories : catégories de documents que l'utilisateur peut consulter (None = toutes, cf. auth/droits.py)"""
     questions_precedentes = [message["content"] for message in historique if message["role"] == "user"]
-    contexte = rechercher_contexte(session, question, questions_precedentes)
+    contexte = rechercher_contexte(session, question, questions_precedentes, categories)
     if contexte.besoin_precision :
         logger.info("code erreur sans appareil : demande du modèle, sans appel au LLM")
         return Preparation(question=question, messages=None, reponse_directe=MESSAGE_PRECISION_MODELE, references=[])
@@ -78,9 +79,9 @@ def enregistrer_echange(session : Session, conversation : Conversation, preparat
     return ReponseAssistant(texte=texte, sources=sources, message=message, consommation=consommation)
 
 
-def repondre(session : Session, conversation : Conversation, question : str) -> ReponseAssistant :
+def repondre(session : Session, conversation : Conversation, question : str, categories : list[str] | None = None) -> ReponseAssistant :
     """réponse complète (sans streaming), enregistrée dans la conversation"""
-    preparation = preparer(session, question, historique_conversation(session, conversation))
+    preparation = preparer(session, question, historique_conversation(session, conversation), categories)
     if preparation.messages is None :
         return enregistrer_echange(session, conversation, preparation, preparation.reponse_directe)
     reponse = completer(preparation.messages)

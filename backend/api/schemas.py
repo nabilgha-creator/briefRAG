@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from backend.auth.securite import LONGUEUR_MIN_MOT_DE_PASSE
 
@@ -21,8 +21,14 @@ class DemandeConnexion(BaseModel) :
     mot_de_passe : str = Field(min_length=1, max_length=200)
 
 
+class RoleResume(DepuisORM) :
+    id_role : int
+    nom : str
+
+
 class UtilisateurPublic(DepuisORM) :
-    """un utilisateur, sans son empreinte de mot de passe"""
+    """un utilisateur, sans son empreinte de mot de passe.
+    role : type de compte (droits de gestion) ; roles : rôles d'accès a la documentation"""
     id_utilisateur : int
     identifiant : str
     nom : str
@@ -30,6 +36,7 @@ class UtilisateurPublic(DepuisORM) :
     actif : bool
     date_creation : datetime
     derniere_connexion : datetime | None
+    roles : list[RoleResume] = Field(default_factory=list, validation_alias=AliasChoices("rel_role", "roles"))
 
 
 class ReponseConnexion(BaseModel) :
@@ -49,14 +56,39 @@ class CreationUtilisateur(BaseModel) :
     nom : str = Field(min_length=1, max_length=150)
     mot_de_passe : str = Field(min_length=LONGUEUR_MIN_MOT_DE_PASSE, max_length=200)
     role : Role = "conseiller"
+    roles : list[int] = []                  # identifiants des rôles d'accès a la documentation
 
 
 class ModificationUtilisateur(BaseModel) :
-    """seuls les champs envoyés sont modifiés"""
+    """seuls les champs envoyés sont modifiés (roles : remplace la liste des rôles d'accès)"""
     nom : str | None = Field(default=None, min_length=1, max_length=150)
     mot_de_passe : str | None = Field(default=None, min_length=LONGUEUR_MIN_MOT_DE_PASSE, max_length=200)
     role : Role | None = None
     actif : bool | None = None
+    roles : list[int] | None = None
+
+
+## RÔLES D'ACCÈS (admin) ##
+
+class RolePublic(DepuisORM) :
+    id_role : int
+    nom : str
+    description : str | None
+    categories : list[str]
+    nombre_comptes : int = 0
+
+
+class CreationRole(BaseModel) :
+    nom : str = Field(min_length=1, max_length=50)
+    description : str | None = Field(default=None, max_length=255)
+    categories : list[str] = []
+
+
+class ModificationRole(BaseModel) :
+    """seuls les champs envoyés sont modifiés"""
+    nom : str | None = Field(default=None, min_length=1, max_length=50)
+    description : str | None = Field(default=None, max_length=255)
+    categories : list[str] | None = None
 
 
 class ConnexionJournal(DepuisORM) :

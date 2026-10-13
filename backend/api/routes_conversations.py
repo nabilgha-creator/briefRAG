@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from backend.api.dependances import SessionBD, UtilisateurConnecte
 from backend.api.schemas import (ConversationDetail, ConversationResume, CreationConversation, MessagePublic, Question,
                                  RenommageConversation, ReponseQuestion)
+from backend.auth.droits import categories_autorisees
 from backend.database.crud_conversations import (TITRE_PAR_DEFAUT, creer_conversation, get_conversation, lister_conversations,
                                                  renommer_conversation, supprimer_conversation)
 from backend.database.db import SessionLocal
@@ -82,7 +83,7 @@ def supprimer(id_conversation : int, utilisateur : UtilisateurConnecte, session 
 def poser_question(id_conversation : int, question : Question, utilisateur : UtilisateurConnecte, session : SessionBD) -> ReponseQuestion :
     conversation = _conversation_ou_404(session, id_conversation, utilisateur.id_utilisateur)
     try :
-        reponse = repondre(session, conversation, question.question)
+        reponse = repondre(session, conversation, question.question, categories_autorisees(utilisateur))
     except ErreurLLM as erreur :
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(erreur)) from erreur
     session.commit()
@@ -121,6 +122,6 @@ def _flux_reponse(id_conversation : int, preparation : Preparation) -> Iterator[
 @routeur.post("/{id_conversation}/messages/flux")
 def poser_question_flux(id_conversation : int, question : Question, utilisateur : UtilisateurConnecte, session : SessionBD) -> StreamingResponse :
     conversation = _conversation_ou_404(session, id_conversation, utilisateur.id_utilisateur)
-    preparation = preparer(session, question.question, historique_conversation(session, conversation))
+    preparation = preparer(session, question.question, historique_conversation(session, conversation), categories_autorisees(utilisateur))
     return StreamingResponse(_flux_reponse(conversation.id_conversation, preparation), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

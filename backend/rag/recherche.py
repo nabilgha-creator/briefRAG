@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
 
+from backend.config import CATEGORIE_REFERENTIEL
 from backend.database.crud import lister_erreurs, lister_modeles, rechercher_chunks
 from backend.database.models import Chunk, Erreur, Modele
 from backend.rag.embeddings import vectoriser_question
@@ -154,8 +155,11 @@ def _texte_de_recherche(question : str, questions_precedentes : list[str]) -> st
     return question
 
 
-def rechercher_contexte(session : Session, question : str, questions_precedentes : list[str]) -> Contexte :
-    """questions_precedentes : les messages précédents de l'utilisateur, du plus ancien au plus récent"""
+def rechercher_contexte(session : Session, question : str, questions_precedentes : list[str],
+                        categories : list[str] | None = None) -> Contexte :
+    """questions_precedentes : les messages précédents de l'utilisateur, du plus ancien au plus récent.
+    categories : catégories de documents que l'utilisateur peut consulter (None = toutes) ; les fiches erreur
+    exactes suivent la catégorie du référentiel des codes erreur"""
     plus_recentes_d_abord = [question] + questions_precedentes[::-1]
     modeles = lister_modeles(session)
     appareils = analyser_appareils(plus_recentes_d_abord, modeles)
@@ -164,7 +168,8 @@ def rechercher_contexte(session : Session, question : str, questions_precedentes
         appareils = _appareils_des_codes(session, codes, modeles)
 
     fiches, ids_erreurs = [], []
-    if codes and appareils.modeles :
+    referentiel_autorise = categories is None or CATEGORIE_REFERENTIEL in categories
+    if codes and appareils.modeles and referentiel_autorise :
         for code in codes :
             erreurs = lister_erreurs(session, code, appareils.modeles)
             if not erreurs :
@@ -174,8 +179,9 @@ def rechercher_contexte(session : Session, question : str, questions_precedentes
 
     vecteur = vectoriser_question(_texte_de_recherche(question, questions_precedentes))
     filtre = appareils.modeles or None
-    proches = rechercher_chunks(session, vecteur, NB_EXTRAITS, modeles=filtre)
-    lies = rechercher_chunks(session, vecteur, NB_EXTRAITS_LIES_AUX_ERREURS, modeles=filtre, ids_erreurs=ids_erreurs) if ids_erreurs else []
+    proches = rechercher_chunks(session, vecteur, NB_EXTRAITS, modeles=filtre, categories=categories)
+    lies = (rechercher_chunks(session, vecteur, NB_EXTRAITS_LIES_AUX_ERREURS, modeles=filtre, ids_erreurs=ids_erreurs, categories=categories)
+            if ids_erreurs else [])
 
     # les extraits liés aux erreurs sont pertinents par construction ; les autres doivent passer le seuil.
     # écartés pour économiser des tokens : un extrait qui répète une fiche erreur déjà fournie (ligne du référentiel),

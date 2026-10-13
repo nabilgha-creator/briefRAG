@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api import routes_auth, routes_conversations, routes_utilisateurs
+from backend.api import routes_auth, routes_conversations, routes_roles, routes_utilisateurs
 from backend.auth.admin_initial import assurer_admin_initial
 from backend.database.db import SessionLocal
 from backend.rag.embeddings import vectoriser_question
@@ -44,6 +44,7 @@ app.add_middleware(
 
 app.include_router(routes_auth.routeur)
 app.include_router(routes_utilisateurs.routeur)
+app.include_router(routes_roles.routeur)
 app.include_router(routes_conversations.routeur)
 
 

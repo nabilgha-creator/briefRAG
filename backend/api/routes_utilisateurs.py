@@ -32,7 +32,7 @@ def lister(_ : Admin, session : SessionBD) -> list[Utilisateur] :
 @routeur.post("", response_model=UtilisateurPublic, status_code=status.HTTP_201_CREATED)
 def creer(creation : CreationUtilisateur, _ : Admin, session : SessionBD) -> Utilisateur :
     try :
-        utilisateur = creer_utilisateur(session, creation.identifiant, creation.nom, creation.mot_de_passe, creation.role)
+        utilisateur = creer_utilisateur(session, creation.identifiant, creation.nom, creation.mot_de_passe, creation.role, creation.roles)
     except ValueError as erreur :
         raise HTTPException(status.HTTP_409_CONFLICT, str(erreur)) from erreur
     session.commit()
@@ -55,8 +55,11 @@ def modifier(id_utilisateur : int, modification : ModificationUtilisateur, _ : A
     utilisateur = _utilisateur_ou_404(session, id_utilisateur)
     if modification.actif is False or (modification.role is not None and modification.role != "admin") :
         _verifier_reste_un_admin(session, utilisateur)
-    modifier_utilisateur(session, utilisateur, nom=modification.nom, mot_de_passe=modification.mot_de_passe,
-                         role=modification.role, actif=modification.actif)
+    try :
+        modifier_utilisateur(session, utilisateur, nom=modification.nom, mot_de_passe=modification.mot_de_passe,
+                             role=modification.role, actif=modification.actif, ids_roles=modification.roles)
+    except ValueError as erreur :
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(erreur)) from erreur
     session.commit()
     return utilisateur
 
