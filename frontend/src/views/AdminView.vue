@@ -231,9 +231,9 @@ onMounted(charger)
 
 <style scoped>
 .admin {
-  flex: 999 1 640px;
   min-width: 0;
   height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
 }
 
@@ -486,9 +486,9 @@ td {
   color: var(--doux);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 767px) {
   .admin {
-    height: auto;
+    height: calc(100dvh - 56px);      /* sous la barre du haut (LayoutConsole) */
   }
 
   .contenu {

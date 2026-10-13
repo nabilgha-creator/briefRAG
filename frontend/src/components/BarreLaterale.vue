@@ -123,16 +123,18 @@ async function supprimer(id) {
 </template>
 
 <style scoped>
+/* reste a gauche et ne défile pas avec le contenu (LayoutConsole la place dans sa grille) */
 .rail {
-  flex: 1 1 250px;
-  max-width: 100%;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 20px 14px;
   background-color: var(--rail);
   border-right: 1px solid var(--bordure);
-  min-height: 100vh;
 }
 
 .marque {
@@ -387,17 +389,5 @@ async function supprimer(id) {
 .liste-leave-active {
   position: absolute;
   width: 100%;
-}
-
-@media (max-width: 900px) {
-  .rail {
-    min-height: 0;
-    border-right: 0;
-    border-bottom: 1px solid var(--bordure);
-  }
-
-  .liste {
-    max-height: 220px;
-  }
 }
 </style>

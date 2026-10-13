@@ -19,6 +19,12 @@ const brouillon = ref('')
 const fil = ref(null)
 const saisie = ref(null)
 const erreurChargement = ref('')
+const sourcesOuvertes = ref(false)       // tiroir des sources (écrans < 1200 px ; toujours visible au-delà)
+
+function choisirSource(idMessage, numero) {
+  conversations.choisirSource(idMessage, numero)
+  sourcesOuvertes.value = true
+}
 
 const SUGGESTIONS = [
   'Que veut dire le code E23 sur un LV-200 ?',
@@ -77,6 +83,12 @@ function estSelectionne(message) {
     <main class="principal">
       <header class="entete t">
         <h1>{{ titre }}</h1>
+        <button type="button" class="bouton-sources" :aria-expanded="sourcesOuvertes" aria-controls="panneau-sources"
+                @click="sourcesOuvertes = !sourcesOuvertes">
+          <Icone nom="sources" :taille="16" />
+          <span>Sources</span>
+          <span v-if="conversations.sources.length" class="pastille">{{ conversations.sources.length }}</span>
+        </button>
       </header>
 
       <div ref="fil" class="fil" aria-live="polite">
@@ -99,7 +111,7 @@ function estSelectionne(message) {
           <div v-if="message.role === 'user'" class="question t apparition">{{ message.contenu }}</div>
           <MessageAssistant v-else class="apparition" :message="message" :phase="conversations.phase"
                             :source-active="conversations.sourceActive" :selectionne="estSelectionne(message)"
-                            @choisir-source="(numero) => conversations.choisirSource(message.id_message, numero)" />
+                            @choisir-source="(numero) => choisirSource(message.id_message, numero)" />
         </template>
       </div>
 
@@ -112,23 +124,27 @@ function estSelectionne(message) {
       </div>
     </main>
 
-    <PanneauSources :sources="conversations.sources" :source-active="conversations.sourceActive"
+    <Transition name="voile">
+      <div v-if="sourcesOuvertes" class="voile-sources" aria-hidden="true" @click="sourcesOuvertes = false"></div>
+    </Transition>
+    <PanneauSources id="panneau-sources" :class="{ ouvert: sourcesOuvertes }" :sources="conversations.sources"
+                    :source-active="conversations.sourceActive" @fermer="sourcesOuvertes = false"
                     @choisir="(numero) => conversations.choisirSource(conversations.idMessageSources, numero)" />
   </div>
 </template>
 
 <style scoped>
+/* conversation au centre, sources a droite (tiroir sous 1200 px, cf. PanneauSources) */
 .chat {
-  flex: 999 1 820px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
   min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
 }
 
 .principal {
-  flex: 999 1 500px;
   min-width: 0;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -136,18 +152,44 @@ function estSelectionne(message) {
 .entete {
   display: flex;
   align-items: center;
+  gap: 12px;
   min-height: 64px;
   padding: 12px 28px;
   border-bottom: 1px solid var(--bordure);
 }
 
 h1 {
+  flex: 1;
   margin: 0;
   font-size: 18px;
   font-weight: 600;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.bouton-sources {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--bordure2);
+  border-radius: 11px;
+  background-color: transparent;
+  color: var(--texte3);
+  font-size: 13px;
+  font-weight: 600;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.bouton-sources:hover {
+  border-color: var(--acc2);
+  color: var(--acc-texte);
+}
+
+.voile-sources {
+  display: none;
 }
 
 .fil {
@@ -241,10 +283,44 @@ h1 {
   font-weight: 600;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
+  .chat {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bouton-sources {
+    display: inline-flex;
+  }
+
+  .voile-sources {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 15;
+    background-color: var(--voile);
+  }
+
+  .voile-enter-active,
+  .voile-leave-active {
+    transition: opacity 0.25s;
+  }
+
+  .voile-enter-from,
+  .voile-leave-to {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 767px) {
   .principal {
-    height: auto;
-    min-height: 70vh;
+    height: calc(100dvh - 56px);      /* sous la barre du haut (LayoutConsole) */
+  }
+
+  .entete,
+  .fil,
+  .bas {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
 </style>

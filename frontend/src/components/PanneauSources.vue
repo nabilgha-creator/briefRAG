@@ -9,7 +9,7 @@ const props = defineProps({
   sources: { type: Array, default: () => [] },
   sourceActive: { type: Number, default: null },
 })
-const emit = defineEmits(['choisir'])
+const emit = defineEmits(['choisir', 'fermer'])     // fermer : en mode tiroir (écran < 1200 px)
 
 const elements = ref({})
 
@@ -37,6 +37,9 @@ watch(() => props.sourceActive, async (numero) => {
     <div class="entete">
       <h2>Sources</h2>
       <span class="mono compte">{{ sources.length }} extrait{{ sources.length > 1 ? 's' : '' }}</span>
+      <button type="button" class="bouton-icone fermer" aria-label="Fermer les sources" @click="emit('fermer')">
+        <Icone nom="croix" :taille="18" />
+      </button>
     </div>
 
     <div v-if="!sources.length" class="vide">
@@ -66,25 +69,31 @@ watch(() => props.sourceActive, async (numero) => {
 </template>
 
 <style scoped>
+/* colonne de droite (ChatView la place dans sa grille) ; tiroir sous 1200 px */
 .panneau {
-  flex: 1 1 320px;
-  max-width: 100%;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   gap: 14px;
   padding: 20px 18px;
   background-color: var(--rail);
   border-left: 1px solid var(--bordure);
-  max-height: 100vh;
   overflow-y: auto;
-  position: sticky;
-  top: 0;
 }
 
 .entete {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
+}
+
+.entete h2 {
+  flex: 1;
+}
+
+.fermer {
+  display: none;
 }
 
 h2 {
@@ -216,12 +225,23 @@ h2 {
   transform: translateX(16px);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1199px) {
   .panneau {
-    position: static;
-    max-height: none;
-    border-left: 0;
-    border-top: 1px solid var(--bordure);
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 20;
+    width: min(380px, 92vw);
+    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+    box-shadow: -24px 0 48px rgba(0, 0, 0, 0.25);
+  }
+
+  .panneau.ouvert {
+    transform: none;
+  }
+
+  .fermer {
+    display: inline-flex;
   }
 }
 </style>
