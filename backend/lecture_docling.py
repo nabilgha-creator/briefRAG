@@ -83,9 +83,13 @@ def _page(item : NodeItem) -> int | None :
     return prov[0].page_no if prov else None
 
 
+def _sans_marque(texte : str) -> str :
+    return RE_MARQUE.sub("", texte).strip()
+
+
 def _extraire_couverture(document : DoclingDocument) -> tuple[str | None, str] :
     """renvoie (titre, entete) et masque le bloc de couverture.
-    - pdf : les titres empilés en haut de la page 1, sauf le dernier qui porte le texte qui suit
+    - pdf : les titres empilés en haut de la page 1 (hors marque seule), sauf le dernier qui porte le texte qui suit
       (exception : s'il n'y en a qu'un, c'est le titre du document)
     - docx : les paragraphes avant le premier titre de section ; le titre = les lignes en gras"""
     items = _items_corps(document)
@@ -97,8 +101,12 @@ def _extraire_couverture(document : DoclingDocument) -> tuple[str | None, str] :
             if not isinstance(item, SectionHeaderItem) or _page(item) != 1 :
                 break
             pile.append(item)
-        couverture = pile if len(pile) <= 1 else pile[:-1]
-        lignes = [item.text for item in couverture]
+        # la marque seule ("ELECTRODOMUS") ne compte pas : selon la mise en page elle est un titre a part ou non
+        marque = [item for item in pile if _sans_marque(item.text).lower() in LIGNES_GENERIQUES]
+        titres = [item for item in pile if all(item is not autre for autre in marque)]
+        titres = titres if len(titres) <= 1 else titres[:-1]
+        couverture = marque + titres
+        lignes = [item.text for item in titres]
     else :
         couverture = []
         for item in items :
@@ -108,7 +116,7 @@ def _extraire_couverture(document : DoclingDocument) -> tuple[str | None, str] :
         textes = [item for item in couverture if isinstance(item, TextItem)]
         lignes = [item.text for item in textes if item.formatting is not None and item.formatting.bold]
 
-    parties = [RE_MARQUE.sub("", ligne).strip() for ligne in lignes]
+    parties = [_sans_marque(ligne) for ligne in lignes]
     parties = [partie for partie in parties if partie.lower() not in LIGNES_GENERIQUES]
     _masquer(couverture)
     return (" — ".join(parties) or None), entete

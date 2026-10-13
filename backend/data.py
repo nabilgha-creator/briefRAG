@@ -39,6 +39,8 @@ _PREFIXES = "|".join(GAMMES)
 RE_MODELE = re.compile(rf"\b(?:{_PREFIXES})-\d{{3}}\b")                                    # WX-500
 RE_GAMME = re.compile(rf"\b(?i:gamme|modèles|série|serie)\s+(?:[\w-]+\s+)?({_PREFIXES})\b(?!-)")   # gamme LV, Gamme lave-linge WX
 RE_CODE_ERREUR = re.compile(r"\bE\d{2}\b")
+RE_MODELES_CONCERNES = re.compile(r"(?i:modèles concernés)\s*:\s*([^\n]*)")
+RE_PARENTHESES = re.compile(r"\([^)]*\)")
 RES_VERSION = [
     re.compile(r"(?i:édition)\s+((?:\w+\s+)?\d{4})"),          # Édition 2024, édition janvier 2026
     re.compile(r"(?i:diffusé le)\s+(\d{1,2} \w+ \d{4})"),      # bulletins techniques
@@ -56,10 +58,30 @@ def _extraire_version(texte : str) -> str | None :
     return None
 
 
-def _modeles_du_document(titre : str, nom_fichier : str) -> tuple[set[str], set[str]] :
-    """modèles et gammes dont parle tout le document, d'après son titre et son nom de fichier.
-    a défaut de modèle ou de gamme explicite, le type d'appareil du titre ("FAQ lave-linge") donne la gamme.
+def _perimetre_declare(chunks : list[ChunkLu]) -> str | None :
+    """texte de la rubrique "Modèles concernés" du document (procédures, fiches de garantie), sans les parenthèses
+    qui portent des précisions ou des exclusions : "FR-700, FR-750 (les FR-600 et FR-650 ne sont pas équipés)" """
+    for chunk in chunks :
+        if any("modèles concernés" in titre.lower() for titre in chunk.titres) :
+            return RE_PARENTHESES.sub("", chunk.texte)
+        trouve = RE_MODELES_CONCERNES.search(chunk.texte)
+        if trouve :
+            return RE_PARENTHESES.sub("", trouve.group(1))
+    return None
+
+
+def _modeles_du_document(titre : str, nom_fichier : str, chunks : list[ChunkLu]) -> tuple[set[str], set[str]] :
+    """modèles et gammes dont parle tout le document :
+    1. la rubrique "Modèles concernés" si le document en a une (la plus précise)
+    2. sinon le titre et le nom de fichier ; a défaut de modèle ou de gamme explicite,
+       le type d'appareil du titre ("FAQ lave-linge") donne la gamme
     rien trouvé = document général (CGV) qui concerne tous les appareils"""
+    perimetre = _perimetre_declare(chunks)
+    if perimetre is not None :
+        modeles, gammes = set(RE_MODELE.findall(perimetre)), set(RE_GAMME.findall(perimetre))
+        if modeles or gammes :
+            return modeles, gammes
+
     texte = f"{titre} {nom_fichier.replace('_', ' ')}"
     modeles, gammes = set(RE_MODELE.findall(texte)), set(RE_GAMME.findall(texte))
     if not modeles and not gammes :
@@ -110,7 +132,7 @@ def charger_document(chemin : Path) -> DocumentCharge :
     if compter_tokens(prefixe) > TOKENS_RESERVES_CONTEXTE :
         logger.warning("%s : contexte de %d tokens, plus que les %d réservés", chemin.name, compter_tokens(prefixe), TOKENS_RESERVES_CONTEXTE)
 
-    modeles, gammes = _modeles_du_document(titre, chemin.stem)
+    modeles, gammes = _modeles_du_document(titre, chemin.stem, lu.chunks)
     chunks = [_construire_chunk(position, chunk, prefixe, modeles, gammes) for position, chunk in enumerate(lu.chunks)]
     for chunk in chunks :
         if compter_tokens(chunk.contenu) > MAX_TOKENS_CHUNK :
