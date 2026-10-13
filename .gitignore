@@ -1,3 +1,23 @@
 Documentation_Electrodomus
-.env 
 assets
+
+# secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+
+# environnement virtuel
+venv/
+.venv/
+
+# logs
+logs/
+*.log
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
