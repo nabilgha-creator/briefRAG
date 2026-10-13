@@ -1,7 +1,9 @@
 from sqlalchemy.orm import declarative_base , Mapped , mapped_column, relationship
-from sqlalchemy import String , Integer ,  ForeignKey , UniqueConstraint, Table, Column, Text, DateTime, func
+from sqlalchemy import String , Integer ,  ForeignKey , UniqueConstraint, Table, Column, Text, DateTime, func, Boolean, CheckConstraint, Numeric
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from pgvector.sqlalchemy import Vector
 from datetime import datetime
+from decimal import Decimal
 
 
 
@@ -41,6 +43,7 @@ class Document (Base) :
     __tablename__ = 'document'      
     
     id_document : Mapped[int] = mapped_column(Integer, primary_key=True)
+    source : Mapped[str] = mapped_column(String(255), nullable=False, unique=True)     # fichier d'origine, identifie le document
     titre : Mapped[str] = mapped_column(String(150), nullable=False)
     version : Mapped[str | None] = mapped_column(String(150), nullable=True)
     date_enr : Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now() )   
@@ -56,6 +59,7 @@ class Chunk(Base):
     position_chunk : Mapped[int] = mapped_column(Integer, nullable=True)
     contenu : Mapped[str] = mapped_column(Text, nullable= False)
     vecteur : Mapped[list[float]] = mapped_column(Vector(1024), nullable=True)
+    pages : Mapped[list[int] | None] = mapped_column(ARRAY(Integer), nullable=True)      # pages du document d'origine (pdf)
     
     rel_chunk_erreur = relationship("Erreur", secondary=chunk_erreur, back_populates="rel_chunk_erreur")
     rel_chunk_modele = relationship("Modele", secondary=chunk_modele , back_populates="rel_chunk_modele")
@@ -76,5 +80,93 @@ class Erreur(Base) :
     rel_modele = relationship("Modele",  back_populates="rel_erreur")
     rel_chunk_erreur = relationship("Chunk", secondary= chunk_erreur , back_populates="rel_chunk_erreur")
     
-    __table_args__ = (UniqueConstraint("modele","code_erreur"),) 
-    
+    __table_args__ = (UniqueConstraint("modele","code_erreur"),)
+
+
+## UTILISATEURS ##
+
+ROLES = ("admin", "conseiller")
+
+
+class Utilisateur(Base) :
+
+    __tablename__ = "utilisateur"
+
+    id_utilisateur : Mapped[int] = mapped_column(Integer, primary_key=True)
+    identifiant : Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    nom : Mapped[str] = mapped_column(String(150), nullable=False)
+    mot_de_passe : Mapped[str] = mapped_column(String(255), nullable=False)          # empreinte scrypt, jamais le mot de passe
+    role : Mapped[str] = mapped_column(String(20), nullable=False, server_default="conseiller")
+    actif : Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    date_creation : Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    derniere_connexion : Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    rel_conversation = relationship("Conversation", back_populates="rel_utilisateur", cascade="all, delete-orphan", passive_deletes=True)
+    rel_jeton = relationship("Jeton", back_populates="rel_utilisateur", cascade="all, delete-orphan", passive_deletes=True)
+
+    __table_args__ = (CheckConstraint(f"role IN {ROLES}", name="ck_utilisateur_role"),)
+
+
+class Jeton(Base) :
+    """jeton de session remis a la connexion ; seule son empreinte est stockée"""
+
+    __tablename__ = "jeton"
+
+    id_jeton : Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_utilisateur : Mapped[int] = mapped_column(Integer, ForeignKey("utilisateur.id_utilisateur", ondelete="CASCADE"), nullable=False, index=True)
+    empreinte : Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    date_creation : Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expiration : Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    rel_utilisateur = relationship("Utilisateur", back_populates="rel_jeton")
+
+
+class Connexion(Base) :
+    """journal des tentatives de connexion (réussies ou non) ; garde l'identifiant saisi même si l'utilisateur est supprimé"""
+
+    __tablename__ = "connexion"
+
+    id_connexion : Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_utilisateur : Mapped[int | None] = mapped_column(Integer, ForeignKey("utilisateur.id_utilisateur", ondelete="SET NULL"), nullable=True, index=True)
+    identifiant : Mapped[str] = mapped_column(String(50), nullable=False)
+    date : Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    succes : Mapped[bool] = mapped_column(Boolean, nullable=False)
+    adresse_ip : Mapped[str | None] = mapped_column(String(45), nullable=True)
+
+
+## CONVERSATIONS ##
+
+class Conversation(Base) :
+
+    __tablename__ = "conversation"
+
+    id_conversation : Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_utilisateur : Mapped[int] = mapped_column(Integer, ForeignKey("utilisateur.id_utilisateur", ondelete="CASCADE"), nullable=False, index=True)
+    titre : Mapped[str] = mapped_column(String(150), nullable=False)
+    date_creation : Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    date_maj : Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    rel_utilisateur = relationship("Utilisateur", back_populates="rel_conversation")
+    rel_message = relationship("Message", back_populates="rel_conversation", order_by="Message.id_message",
+                               cascade="all, delete-orphan", passive_deletes=True)
+
+
+class Message(Base) :
+    """un message de la conversation. role : 'user' ou 'assistant' (les rôles de l'API du LLM)"""
+
+    __tablename__ = "message"
+
+    id_message : Mapped[int] = mapped_column(Integer, primary_key=True)
+    id_conversation : Mapped[int] = mapped_column(Integer, ForeignKey("conversation.id_conversation", ondelete="CASCADE"), nullable=False, index=True)
+    role : Mapped[str] = mapped_column(String(20), nullable=False)
+    contenu : Mapped[str] = mapped_column(Text, nullable=False)
+    sources : Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)       # sources citées par la réponse
+    modele_llm : Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tokens_entree : Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tokens_sortie : Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cout : Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)      # en dollars, tel que facturé par OpenRouter
+    date : Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    rel_conversation = relationship("Conversation", back_populates="rel_message")
+
+    __table_args__ = (CheckConstraint("role IN ('user', 'assistant')", name="ck_message_role"),)

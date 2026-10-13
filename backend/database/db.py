@@ -13,7 +13,9 @@ DATABASE_URL = URL.create(drivername="postgresql+psycopg", #on crée la chaine u
                           port=os.getenv("DB_PORT"),
                           database=os.getenv("DB_NAME"))
 
-engine = create_engine(DATABASE_URL, echo=True) #on crée l'engine , le pool de connexion a la base 
+ECHO_SQL = os.getenv("DB_ECHO", "false").lower() == "true"     # DB_ECHO=true dans le .env pour afficher le SQL généré
+
+engine = create_engine(DATABASE_URL, echo=ECHO_SQL) #on crée l'engine , le pool de connexion a la base
 SessionLocal = sessionmaker(bind=engine) #mis en place d'une "fabrique" de session , permet d'utiliser une seule connexion plutôt qu'ouvrir une connexion par requete
 
 def get_session():
