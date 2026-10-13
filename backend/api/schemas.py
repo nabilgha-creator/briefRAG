@@ -75,6 +75,8 @@ class Source(BaseModel) :
     titre : str
     source : str
     pages : list[int] = []
+    extrait : str = ""
+    distance : float | None = None      # None : donnée exacte (fiche erreur)
 
 
 class MessagePublic(DepuisORM) :

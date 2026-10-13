@@ -54,11 +54,13 @@ class Extrait :
 
 @dataclass
 class Reference :
-    """une source citable dans la réponse"""
+    """une source citable dans la réponse (affichée dans le panneau des sources du front)"""
     numero : int
     titre : str
     source : str
     pages : list[int] = field(default_factory=list)
+    extrait : str = ""                  # début du texte de la source
+    distance : float | None = None      # distance cosinus a la question ; None = donnée exacte (fiche erreur)
 
 
 @dataclass
@@ -74,8 +76,19 @@ class Contexte :
         return bool(self.codes) and not self.appareils.modeles
 
     def references(self) -> list[Reference] :
-        fiches = [Reference(fiche.numero, f"Référentiel des codes erreur — fiche {fiche.code}", "table erreur") for fiche in self.fiches]
-        return fiches + [Reference(extrait.numero, extrait.titre_document, extrait.source, extrait.pages) for extrait in self.extraits]
+        fiches = [Reference(fiche.numero, f"Référentiel des codes erreur — fiche {fiche.code}", "table erreur",
+                            extrait=f"{fiche.signification}. Intervention : {fiche.intervention}") for fiche in self.fiches]
+        return fiches + [Reference(extrait.numero, extrait.titre_document, extrait.source, extrait.pages,
+                                   extrait=_apercu(extrait.contenu), distance=round(extrait.distance, 3)) for extrait in self.extraits]
+
+
+TAILLE_APERCU = 220
+
+
+def _apercu(contenu : str) -> str :
+    """début du texte d'un chunk, sans sa 1re ligne de contexte ("[type] titre du document")"""
+    texte = " ".join(contenu.split("\n", 1)[-1].split())
+    return texte if len(texte) <= TAILLE_APERCU else texte[:TAILLE_APERCU].rsplit(" ", 1)[0] + "…"
 
 
 ## ANALYSE DE LA QUESTION ##
