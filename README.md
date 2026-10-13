@@ -162,6 +162,19 @@ suivent la catégorie « Référentiel codes erreur »). Un conseiller sans rôl
 Les rôles se gèrent dans **Administration › Rôles d'accès** ; on les attribue en créant ou modifiant un compte.
 Un rôle de départ « Accès complet » (toutes les catégories) est créé par les migrations.
 
+## Tests
+
+```bash
+pytest                       # tous les tests (≈ 30 s)
+pytest -m "not integration"  # tests unitaires seuls : ni base, ni réseau (≈ 15 s)
+```
+
+- **Tests unitaires** : sécurité, chargement (versions, modèles, FAQ, Excel, nettoyage), analyse des questions,
+  prompts, citations, droits de lecture.
+- **Tests d'intégration** (`-m integration`) : recherche sur la vraie base et API de bout en bout. Ils créent des
+  comptes `test_…` et des rôles `Test …`, supprimés à la fin, et sont sautés si la base est injoignable.
+  Le LLM est remplacé par une réponse fixe : aucun appel à OpenRouter, aucun coût.
+
 ## Commandes utiles
 
 | Commande                                             | Rôle                                                                                                                                        |
