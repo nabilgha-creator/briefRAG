@@ -78,15 +78,16 @@ def supprimer_document(session : Session, document : Document) -> None :
     session.delete(document)
 
 
-def remplacer_document(session : Session, source : str, titre : str, version : str | None = None) -> Document :
+def remplacer_document(session : Session, source : str, titre : str, version : str | None = None, *, categorie : str) -> Document :
     """crée un document vide ; si le fichier source a déjà été ingéré, l'ancien document et ses chunks sont supprimés avant
-    (une nouvelle édition remplace donc la précédente). permet de relancer l'ingestion sans créer de doublons"""
+    (une nouvelle édition remplace donc la précédente). permet de relancer l'ingestion sans créer de doublons.
+    categorie : Manuel, FAQ... (sert aux droits de lecture des rôles)"""
     ancien = get_document(session, source)
     if ancien is not None :
         supprimer_document(session, ancien)
         session.flush()
 
-    document = Document(source=source, titre=titre, version=version)
+    document = Document(source=source, categorie=categorie, titre=titre, version=version)
     session.add(document)
     return document
 
@@ -138,17 +139,21 @@ def ajouter_chunks(session : Session, document : Document, chunks : list[ChunkAC
 ## RECHERCHE ##
 
 def rechercher_chunks(session : Session, vecteur : list[float], limite : int = 5, modeles : list[str] | None = None,
-                      ids_erreurs : list[int] | None = None) -> list[tuple[Chunk, float]] :
+                      ids_erreurs : list[int] | None = None, categories : list[str] | None = None) -> list[tuple[Chunk, float]] :
     """renvoie les chunks les plus proches du vecteur de la question, du plus proche au plus loin, avec leur distance cosinus
     (0 = identique, 2 = opposé). le document de chaque chunk est chargé avec lui.
     - modeles : ne cherche que dans les chunks liés a l'un de ces modeles et dans les chunks liés a aucun modele
       (documents généraux comme les CGV, valables pour tous les appareils)
-    - ids_erreurs : ne cherche que dans les chunks liés a l'une de ces erreurs"""
+    - ids_erreurs : ne cherche que dans les chunks liés a l'une de ces erreurs
+    - categories : ne cherche que dans les documents de ces catégories (droits de l'utilisateur) ;
+      None = toutes, liste vide = aucune"""
     distance = Chunk.vecteur.cosine_distance(vecteur).label("distance")
     stmt = select(Chunk, distance).where(Chunk.vecteur.is_not(None)).options(selectinload(Chunk.rel_document))
     if modeles :
         stmt = stmt.where(or_(Chunk.rel_chunk_modele.any(Modele.modele.in_(modeles)), ~Chunk.rel_chunk_modele.any()))
     if ids_erreurs :
         stmt = stmt.where(Chunk.rel_chunk_erreur.any(Erreur.id_erreur.in_(ids_erreurs)))
+    if categories is not None :
+        stmt = stmt.where(Chunk.rel_document.has(Document.categorie.in_(categories)))
     stmt = stmt.order_by(distance).limit(limite)
     return list(session.execute(stmt).tuples())

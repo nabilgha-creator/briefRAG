@@ -63,7 +63,7 @@ def _chunks_a_creer(document : DocumentCharge, vecteurs : list[list[float]], mod
 
 
 def ingerer_document(session : Session, document : DocumentCharge, vecteurs : list[list[float]], modeles_par_gamme : dict[str, list[str]]) -> None :
-    nouveau = remplacer_document(session, document.source, document.titre, document.version)
+    nouveau = remplacer_document(session, document.source, document.titre, document.version, categorie=document.type_document)
     ajouter_chunks(session, nouveau, _chunks_a_creer(document, vecteurs, modeles_par_gamme))
 
 

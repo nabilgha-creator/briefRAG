@@ -44,6 +44,7 @@ class Document (Base) :
     
     id_document : Mapped[int] = mapped_column(Integer, primary_key=True)
     source : Mapped[str] = mapped_column(String(255), nullable=False, unique=True)     # fichier d'origine, identifie le document
+    categorie : Mapped[str] = mapped_column(String(50), nullable=False, index=True)    # Manuel, FAQ... (droits de lecture des rôles)
     titre : Mapped[str] = mapped_column(String(150), nullable=False)
     version : Mapped[str | None] = mapped_column(String(150), nullable=True)
     date_enr : Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now() )   
@@ -85,7 +86,28 @@ class Erreur(Base) :
 
 ## UTILISATEURS ##
 
-ROLES = ("admin", "conseiller")
+ROLES = ("admin", "conseiller")      # type de compte : droits de gestion (a ne pas confondre avec les rôles d'accès)
+
+utilisateur_role = Table("utilisateur_role",
+                         Base.metadata,
+                         Column(Integer, ForeignKey("utilisateur.id_utilisateur", ondelete="CASCADE"), nullable=False, name="id_utilisateur", primary_key=True),
+                         Column(Integer, ForeignKey("role.id_role", ondelete="CASCADE"), nullable=False, name="id_role", primary_key=True)
+                         )
+
+
+class Role(Base) :
+    """rôle d'accès a la documentation, attribué aux comptes par un administrateur :
+    un compte voit les documents des catégories de tous ses rôles (les administrateurs voient tout)"""
+
+    __tablename__ = "role"
+
+    id_role : Mapped[int] = mapped_column(Integer, primary_key=True)
+    nom : Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    description : Mapped[str | None] = mapped_column(String(255), nullable=True)
+    categories : Mapped[list[str]] = mapped_column(ARRAY(String(50)), nullable=False, server_default="{}")
+    date_creation : Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    rel_utilisateur = relationship("Utilisateur", secondary=utilisateur_role, back_populates="rel_role")
 
 
 class Utilisateur(Base) :
@@ -103,6 +125,7 @@ class Utilisateur(Base) :
 
     rel_conversation = relationship("Conversation", back_populates="rel_utilisateur", cascade="all, delete-orphan", passive_deletes=True)
     rel_jeton = relationship("Jeton", back_populates="rel_utilisateur", cascade="all, delete-orphan", passive_deletes=True)
+    rel_role = relationship("Role", secondary=utilisateur_role, back_populates="rel_utilisateur", order_by="Role.nom")
 
     __table_args__ = (CheckConstraint(f"role IN {ROLES}", name="ck_utilisateur_role"),)
 

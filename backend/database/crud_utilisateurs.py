@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from backend.database.crud_roles import get_roles
 from backend.database.models import Connexion, Jeton, Utilisateur
 from backend.auth.securite import empreinte_jeton, generer_jeton, hacher_mot_de_passe
 
@@ -25,9 +26,14 @@ def lister_utilisateurs(session : Session) -> list[Utilisateur] :
     return list(session.scalars(select(Utilisateur).order_by(Utilisateur.identifiant)))
 
 
-def creer_utilisateur(session : Session, identifiant : str, nom : str, mot_de_passe : str, role : str = "conseiller") -> Utilisateur :
-    """lève ValueError si l'identifiant est déjà pris ou si le mot de passe est trop court"""
-    return creer_utilisateur_avec_empreinte(session, identifiant, nom, hacher_mot_de_passe(mot_de_passe), role)
+def creer_utilisateur(session : Session, identifiant : str, nom : str, mot_de_passe : str, role : str = "conseiller",
+                      ids_roles : list[int] | None = None) -> Utilisateur :
+    """ids_roles : rôles d'accès a la documentation attribués au compte.
+    lève ValueError si l'identifiant est déjà pris, si le mot de passe est trop court ou si un rôle n'existe pas"""
+    roles = get_roles(session, ids_roles) if ids_roles else []
+    utilisateur = creer_utilisateur_avec_empreinte(session, identifiant, nom, hacher_mot_de_passe(mot_de_passe), role)
+    utilisateur.rel_role = roles
+    return utilisateur
 
 
 def creer_utilisateur_avec_empreinte(session : Session, identifiant : str, nom : str, empreinte : str, role : str = "conseiller") -> Utilisateur :
@@ -42,8 +48,11 @@ def creer_utilisateur_avec_empreinte(session : Session, identifiant : str, nom :
 
 
 def modifier_utilisateur(session : Session, utilisateur : Utilisateur, nom : str | None = None, mot_de_passe : str | None = None,
-                         role : str | None = None, actif : bool | None = None) -> Utilisateur :
-    """modifie les champs donnés (None = inchangé). désactiver un compte ou changer son mot de passe ferme ses sessions"""
+                         role : str | None = None, actif : bool | None = None, ids_roles : list[int] | None = None) -> Utilisateur :
+    """modifie les champs donnés (None = inchangé ; ids_roles remplace la liste des rôles d'accès).
+    désactiver un compte ou changer son mot de passe ferme ses sessions. lève ValueError si un rôle n'existe pas"""
+    if ids_roles is not None :
+        utilisateur.rel_role = get_roles(session, ids_roles) if ids_roles else []
     if nom is not None :
         utilisateur.nom = nom
     if role is not None :

@@ -14,7 +14,7 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 
-from backend.config import ASSETS, DOCS
+from backend.config import ASSETS, CATEGORIE_PAR_DEFAUT, CATEGORIE_REFERENTIEL, CATEGORIES_PAR_DOSSIER, DOCS
 from backend.chargement.chunker import MAX_TOKENS_CHUNK, TOKENS_RESERVES_CONTEXTE, compter_tokens
 from backend.chargement.lecture_docling import lire_document_docling
 from backend.chargement.lecture_excel import lire_referentiel
@@ -25,18 +25,9 @@ logger = logging.getLogger(__name__)
 
 EXTENSIONS = {".pdf", ".docx", ".html"}
 FICHIER_REFERENTIEL = DOCS / "Referentiel_codes_erreur.xlsx"
-TYPE_REFERENTIEL = "Référentiel codes erreur"
 DOSSIER_CACHE = ASSETS / "cache_docling"
 FICHIER_EXPORT = ASSETS / "chunks.json"
 
-# dossier de rangement -> type de document affiché dans le contexte des chunks
-TYPES_DOCUMENT = {
-    "Manuels": "Manuel",
-    "Procedures_SAV": "Procédure SAV",
-    "Bulletins_techniques": "Bulletin technique",
-    "Garanties": "Garantie",
-    "FAQ": "FAQ",
-}
 # préfixe de gamme -> type d'appareil (cf. onglets du référentiel des codes erreur)
 GAMMES = {"WX": "lave-linge", "LV": "lave-vaisselle", "FR": "four"}
 
@@ -136,7 +127,7 @@ def _lire(chemin : Path) -> DocumentLu :
 def charger_document(chemin : Path) -> DocumentCharge :
     """lit, découpe et enrichit un document"""
     lu = _lire(chemin)
-    type_document = TYPES_DOCUMENT.get(chemin.parent.name, "Document")
+    type_document = CATEGORIES_PAR_DOSSIER.get(chemin.parent.name, CATEGORIE_PAR_DEFAUT)
     titre = lu.titre or chemin.stem.replace("_", " ")
     prefixe = f"[{type_document}] {titre}"
     if compter_tokens(prefixe) > TOKENS_RESERVES_CONTEXTE :
@@ -185,7 +176,7 @@ def document_du_referentiel(referentiel : Referentiel) -> DocumentCharge :
     """un chunk par code erreur et par gamme, pour que la recherche retrouve aussi le référentiel.
     les modèles et le code viennent des colonnes du tableau : pas besoin de les deviner dans le texte"""
     titre = "Référentiel des codes erreur" + (f" (version {referentiel.version})" if referentiel.version else "")
-    prefixe = f"[{TYPE_REFERENTIEL}] {titre}"
+    prefixe = f"[{CATEGORIE_REFERENTIEL}] {titre}"
     chunks = []
     for position, erreur in enumerate(referentiel.erreurs) :
         section = f"{erreur.type_appareil} série {erreur.gamme}"
@@ -200,7 +191,7 @@ def document_du_referentiel(referentiel : Referentiel) -> DocumentCharge :
                                   codes_erreur=[erreur.code]))
 
     modeles = sorted({modele for erreur in referentiel.erreurs for modele in erreur.modeles})
-    return DocumentCharge(source=referentiel.source, type_document=TYPE_REFERENTIEL, titre=titre,
+    return DocumentCharge(source=referentiel.source, type_document=CATEGORIE_REFERENTIEL, titre=titre,
                           version=referentiel.version, modeles=modeles, gammes=[], chunks=chunks)
 
 
