@@ -5,6 +5,7 @@ import Icone from './Icone.vue'
 
 const props = defineProps({
   utilisateur: { type: Object, default: null },     // null : création
+  rolesDisponibles: { type: Array, default: () => [] },   // rôles d'accès a la documentation
   enregistrement: { type: Boolean, default: false },
   erreur: { type: String, default: '' },
 })
@@ -17,7 +18,20 @@ const identifiant = ref(props.utilisateur?.identifiant ?? '')
 const nom = ref(props.utilisateur?.nom ?? '')
 const motDePasse = ref('')
 const role = ref(props.utilisateur?.role ?? 'conseiller')
+const rolesChoisis = ref(new Set(props.utilisateur?.roles?.map((r) => r.id_role) ?? []))
 const premierChamp = ref(null)
+
+function basculerRole(idRole) {
+  const copie = new Set(rolesChoisis.value)
+  if (copie.has(idRole)) copie.delete(idRole)
+  else copie.add(idRole)
+  rolesChoisis.value = copie
+}
+
+function memesRoles() {
+  const avant = new Set(props.utilisateur?.roles?.map((r) => r.id_role) ?? [])
+  return avant.size === rolesChoisis.value.size && [...avant].every((id) => rolesChoisis.value.has(id))
+}
 
 const problemes = computed(() => {
   const liste = []
@@ -34,9 +48,11 @@ function enregistrer() {
     if (nom.value.trim() !== props.utilisateur.nom) champs.nom = nom.value.trim()
     if (role.value !== props.utilisateur.role) champs.role = role.value
     if (motDePasse.value) champs.mot_de_passe = motDePasse.value
+    if (!memesRoles()) champs.roles = [...rolesChoisis.value]
     emit('enregistrer', champs)
   } else {
-    emit('enregistrer', { identifiant: identifiant.value.trim(), nom: nom.value.trim(), mot_de_passe: motDePasse.value, role: role.value })
+    emit('enregistrer', { identifiant: identifiant.value.trim(), nom: nom.value.trim(), mot_de_passe: motDePasse.value,
+                          role: role.value, roles: [...rolesChoisis.value] })
   }
 }
 
@@ -78,7 +94,7 @@ onMounted(() => premierChamp.value?.focus())
       </div>
 
       <div class="groupe">
-        <span id="n-role" class="etiquette">Rôle</span>
+        <span id="n-role" class="etiquette">Type de compte</span>
         <div role="radiogroup" aria-labelledby="n-role" class="segments t">
           <button v-for="option in [{ valeur: 'conseiller', libelle: 'Conseiller' }, { valeur: 'admin', libelle: 'Administrateur' }]"
                   :key="option.valeur" type="button" role="radio" class="segment" :class="{ choisi: role === option.valeur }"
@@ -87,6 +103,23 @@ onMounted(() => premierChamp.value?.focus())
           </button>
         </div>
       </div>
+
+      <fieldset class="groupe roles-acces">
+        <legend class="etiquette">Rôles d'accès à la documentation</legend>
+        <p v-if="role === 'admin'" class="aide">Les administrateurs voient toute la documentation, quels que soient leurs rôles.</p>
+        <p v-if="!rolesDisponibles.length" class="aide">Aucun rôle n'existe : créez-en un dans l'onglet « Rôles ».</p>
+        <label v-for="r in rolesDisponibles" :key="r.id_role" class="case" :class="{ cochee: rolesChoisis.has(r.id_role) }">
+          <input type="checkbox" :checked="rolesChoisis.has(r.id_role)" @change="basculerRole(r.id_role)">
+          <span class="coche-visuelle" aria-hidden="true"><Icone v-if="rolesChoisis.has(r.id_role)" nom="coche" :taille="14" :epaisseur="3" /></span>
+          <span class="case-textes">
+            <span>{{ r.nom }}</span>
+            <span class="case-detail">{{ r.categories.length ? r.categories.join(' · ') : 'aucun document' }}</span>
+          </span>
+        </label>
+        <p v-if="role !== 'admin' && rolesDisponibles.length && !rolesChoisis.size" class="aide attention">
+          Sans rôle, ce compte ne verra aucun document.
+        </p>
+      </fieldset>
 
       <Transition name="contenu">
         <p v-if="erreur" class="erreur" role="alert">
@@ -197,6 +230,87 @@ h2 {
 .segment.choisi {
   background-image: var(--degrade);
   color: var(--sur-acc);
+}
+
+.roles-acces {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.roles-acces legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.case {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1.5px solid var(--bordure2);
+  border-radius: 12px;
+  background-color: var(--eleve);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.case:hover {
+  border-color: var(--bordure3);
+}
+
+.case.cochee {
+  border-color: var(--acc2);
+  background-color: var(--acc-fond2);
+}
+
+.case input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.case:has(input:focus-visible) {
+  outline: 2px solid var(--acc2);
+  outline-offset: 2px;
+}
+
+.coche-visuelle {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--bordure3);
+  border-radius: 7px;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.cochee .coche-visuelle {
+  border-color: transparent;
+  background-image: var(--degrade);
+  color: var(--sur-acc);
+}
+
+.case-textes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.case-detail {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--discret);
+}
+
+.attention {
+  color: var(--erreur);
 }
 
 .erreur {

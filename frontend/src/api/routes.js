@@ -18,6 +18,14 @@ export const apiConversations = {
   poserQuestion: (id, question, gestionnaires, signal) => flux(`/conversations/${id}/messages/flux`, { question }, gestionnaires, signal),
 }
 
+export const apiRoles = {
+  lister: () => requete('GET', '/roles'),
+  categories: () => requete('GET', '/roles/categories'),
+  creer: (role) => requete('POST', '/roles', role),
+  modifier: (id, champs) => requete('PATCH', `/roles/${id}`, champs),
+  supprimer: (id) => requete('DELETE', `/roles/${id}`),
+}
+
 export const apiUtilisateurs = {
   lister: () => requete('GET', '/utilisateurs'),
   creer: (utilisateur) => requete('POST', '/utilisateurs', utilisateur),

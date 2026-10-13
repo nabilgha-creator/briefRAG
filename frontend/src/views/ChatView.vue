@@ -7,12 +7,14 @@ import MessageAssistant from '@/components/MessageAssistant.vue'
 import PanneauSources from '@/components/PanneauSources.vue'
 import ZoneSaisie from '@/components/ZoneSaisie.vue'
 import { useConversationsStore } from '@/stores/conversations'
+import { useSessionStore } from '@/stores/session'
 
 const props = defineProps({
   id: { type: String, default: null },        // présent sur /conversations/:id
 })
 
 const conversations = useConversationsStore()
+const session = useSessionStore()
 const router = useRouter()
 
 const brouillon = ref('')
@@ -35,6 +37,8 @@ const SUGGESTIONS = [
 
 const titre = computed(() => conversations.active?.titre ?? 'Nouvelle conversation')
 const vide = computed(() => !conversations.messages.length && !conversations.chargement)
+// conseiller sans rôle d'accès : l'assistant ne peut s'appuyer sur aucun document
+const sansAcces = computed(() => !session.estAdmin && !session.utilisateur?.roles?.length)
 
 // ouvre la conversation de l'adresse, ou repart d'une conversation vide
 watch(() => props.id, async (id) => {
@@ -100,6 +104,10 @@ function estSelectionne(message) {
         <div v-if="vide && !erreurChargement" class="accueil apparition">
           <h2>Bonjour, quelle est votre question ?</h2>
           <p>Indiquez le modèle (WX-500, LV-200, FR-700…) et le code erreur ou le symptôme : la réponse cite ses sources.</p>
+          <p v-if="sansAcces" class="erreur" role="alert">
+            <Icone nom="alerte" />
+            <span>Aucun rôle d'accès n'est attribué à votre compte : l'assistant n'a accès à aucun document. Contactez un administrateur.</span>
+          </p>
           <div class="suggestions">
             <button v-for="suggestion in SUGGESTIONS" :key="suggestion" type="button" class="suggestion" @click="envoyer(suggestion)">
               {{ suggestion }}

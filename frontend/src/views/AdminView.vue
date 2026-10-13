@@ -3,8 +3,10 @@ import { computed, onMounted, ref } from 'vue'
 
 import Icone from '@/components/Icone.vue'
 import Interrupteur from '@/components/Interrupteur.vue'
+import ListeRoles from '@/components/ListeRoles.vue'
+import PanneauRole from '@/components/PanneauRole.vue'
 import PanneauUtilisateur from '@/components/PanneauUtilisateur.vue'
-import { apiUtilisateurs } from '@/api/routes'
+import { apiRoles, apiUtilisateurs } from '@/api/routes'
 import { useSessionStore } from '@/stores/session'
 import { dateLisible } from '@/utils/format'
 
@@ -19,6 +21,9 @@ const panneau = ref(null)                // null fermé, { utilisateur: null } c
 const enregistrement = ref(false)
 const erreurPanneau = ref('')
 const aSupprimer = ref(null)
+const roles = ref([])
+const categories = ref([])
+const panneauRole = ref(null)            // null fermé, { role: null } création, { role } modification
 let minuteurNotification = 0
 
 const adminsActifs = computed(() => utilisateurs.value.filter((u) => u.role === 'admin' && u.actif).length)
@@ -45,7 +50,9 @@ function notifier(type, texte) {
 async function charger() {
   chargement.value = true
   try {
-    ;[utilisateurs.value, journal.value] = await Promise.all([apiUtilisateurs.lister(), apiUtilisateurs.journal(100)])
+    ;[utilisateurs.value, journal.value, roles.value, categories.value] = await Promise.all([
+      apiUtilisateurs.lister(), apiUtilisateurs.journal(100), apiRoles.lister(), apiRoles.categories(),
+    ])
   } catch (erreur) {
     notifier('erreur', erreur.message)
   } finally {
@@ -96,10 +103,43 @@ async function enregistrer(champs) {
       notifier('succes', `Compte ${cree.identifiant} créé.`)
     }
     panneau.value = null
+    roles.value = await apiRoles.lister()          // nombre de comptes par rôle
   } catch (erreur) {
     erreurPanneau.value = erreur.message
   } finally {
     enregistrement.value = false
+  }
+}
+
+function ouvrirPanneauRole(role = null) {
+  erreurPanneau.value = ''
+  panneauRole.value = { role }
+}
+
+async function enregistrerRole(champs) {
+  enregistrement.value = true
+  erreurPanneau.value = ''
+  try {
+    const existant = panneauRole.value.role
+    if (existant) await apiRoles.modifier(existant.id_role, champs)
+    else await apiRoles.creer(champs)
+    notifier('succes', `Rôle ${champs.nom} ${existant ? 'modifié' : 'créé'}.`)
+    panneauRole.value = null
+    ;[roles.value, utilisateurs.value] = await Promise.all([apiRoles.lister(), apiUtilisateurs.lister()])
+  } catch (erreur) {
+    erreurPanneau.value = erreur.message
+  } finally {
+    enregistrement.value = false
+  }
+}
+
+async function supprimerRole(role) {
+  try {
+    await apiRoles.supprimer(role.id_role)
+    notifier('succes', `Rôle ${role.nom} supprimé.`)
+    ;[roles.value, utilisateurs.value] = await Promise.all([apiRoles.lister(), apiUtilisateurs.lister()])
+  } catch (erreur) {
+    notifier('erreur', erreur.message)
   }
 }
 
@@ -123,7 +163,11 @@ onMounted(charger)
           <h1>Comptes et connexions</h1>
           <p class="resume">{{ resume }}</p>
         </div>
-        <button type="button" class="bouton-primaire" @click="ouvrirPanneau()">
+        <button v-if="onglet === 'roles'" type="button" class="bouton-primaire" @click="ouvrirPanneauRole()">
+          <Icone nom="plus" :epaisseur="2.4" />
+          <span>Nouveau rôle</span>
+        </button>
+        <button v-else type="button" class="bouton-primaire" @click="ouvrirPanneau()">
           <Icone nom="plus" :epaisseur="2.4" />
           <span>Ajouter un utilisateur</span>
         </button>
@@ -139,6 +183,8 @@ onMounted(charger)
       <div role="tablist" aria-label="Sections" class="onglets t">
         <button type="button" role="tab" class="onglet" :class="{ actif: onglet === 'utilisateurs' }" :aria-selected="onglet === 'utilisateurs'"
                 @click="onglet = 'utilisateurs'">Utilisateurs</button>
+        <button type="button" role="tab" class="onglet" :class="{ actif: onglet === 'roles' }" :aria-selected="onglet === 'roles'"
+                @click="onglet = 'roles'">Rôles d'accès</button>
         <button type="button" role="tab" class="onglet" :class="{ actif: onglet === 'journal' }" :aria-selected="onglet === 'journal'"
                 @click="voirJournal">Journal des connexions</button>
       </div>
@@ -149,14 +195,15 @@ onMounted(charger)
             <thead>
               <tr>
                 <th>UTILISATEUR</th>
-                <th>RÔLE</th>
+                <th>TYPE DE COMPTE</th>
+                <th>RÔLES D'ACCÈS</th>
                 <th>DERNIÈRE CONNEXION</th>
                 <th>ACTIF</th>
                 <th class="droite">ACTIONS</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-if="chargement"><td colspan="5" class="attente">Chargement…</td></tr>
+              <tr v-if="chargement"><td colspan="6" class="attente">Chargement…</td></tr>
               <tr v-for="u in utilisateurs" :key="u.id_utilisateur" class="ligne" :class="{ apparition: u.nouveau }">
                 <td>
                   <div class="personne">
@@ -168,6 +215,13 @@ onMounted(charger)
                   </div>
                 </td>
                 <td><span class="role" :class="u.role">{{ u.role === 'admin' ? 'Administrateur' : 'Conseiller' }}</span></td>
+                <td>
+                  <span v-if="u.role === 'admin'" class="discret petit-texte">toute la documentation</span>
+                  <span v-else-if="!u.roles.length" class="sans-role">aucun</span>
+                  <span v-else class="puces-roles">
+                    <span v-for="r in u.roles" :key="r.id_role" class="puce-role">{{ r.nom }}</span>
+                  </span>
+                </td>
                 <td class="date">{{ dateLisible(u.derniere_connexion) }}</td>
                 <td>
                   <Interrupteur :actif="u.actif" :libelle="`${u.actif ? 'Désactiver' : 'Activer'} ${u.identifiant}`"
@@ -193,6 +247,10 @@ onMounted(charger)
             </tbody>
           </table>
           <p class="note">Le dernier administrateur actif ne peut être ni désactivé ni supprimé. Supprimer un compte supprime aussi ses conversations.</p>
+        </section>
+
+        <section v-else-if="onglet === 'roles'" key="roles">
+          <ListeRoles :roles="roles" :chargement="chargement" @modifier="ouvrirPanneauRole" @supprimer="supprimerRole" />
         </section>
 
         <section v-else key="journal" class="tableau t">
@@ -224,8 +282,10 @@ onMounted(charger)
       </Transition>
     </div>
 
-    <PanneauUtilisateur v-if="panneau" :utilisateur="panneau.utilisateur" :enregistrement="enregistrement" :erreur="erreurPanneau"
-                        @fermer="panneau = null" @enregistrer="enregistrer" />
+    <PanneauUtilisateur v-if="panneau" :utilisateur="panneau.utilisateur" :roles-disponibles="roles" :enregistrement="enregistrement"
+                        :erreur="erreurPanneau" @fermer="panneau = null" @enregistrer="enregistrer" />
+    <PanneauRole v-if="panneauRole" :role="panneauRole.role" :categories="categories" :enregistrement="enregistrement"
+                 :erreur="erreurPanneau" @fermer="panneauRole = null" @enregistrer="enregistrerRole" />
   </main>
 </template>
 
@@ -423,6 +483,32 @@ td {
 
 .date {
   color: var(--texte3);
+}
+
+.puces-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.puce-role {
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--bordure2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texte2);
+  white-space: nowrap;
+}
+
+.sans-role {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--erreur);
+}
+
+.petit-texte {
+  font-size: 13px;
 }
 
 .actions {
