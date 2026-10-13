@@ -28,12 +28,12 @@ logger.py              configuration des logs (fichier logs/briefrag.log)
 
 ## Prérequis
 
-| Outil | Version |
-|---|---|
-| Python | 3.12 ou plus (développé avec 3.14) |
-| PostgreSQL | 18, avec l'extension **pgvector** installée |
-| Node.js | 22 ou plus (pour le front) |
-| Clé API OpenRouter | https://openrouter.ai/keys |
+| Outil               | Version                                           |
+| ------------------- | ------------------------------------------------- |
+| Python              | 3.12 ou plus (développé avec 3.14)              |
+| PostgreSQL          | 18, avec l'extension**pgvector** installée |
+| Node.js             | 22 ou plus (pour le front)                        |
+| Clé API OpenRouter | https://openrouter.ai/keys                        |
 
 La documentation source n'est pas dans le dépôt : placez-la dans `assets/Documentation_Electrodomus/`
 (sous-dossiers `Manuels`, `Procedures_SAV`, `Bulletins_techniques`, `Garanties`, `FAQ`, et le fichier
@@ -147,18 +147,33 @@ npm run dev
 Ouvrez http://localhost:5173 et connectez-vous. En développement, le front appelle l'API via `/api`
 (redirigé par Vite vers le port 8000).
 
+## Comptes et droits d'accès
+
+Chaque compte a :
+
+- un **type de compte** : *administrateur* (gère les comptes et les rôles, voit toute la documentation) ou *conseiller* ;
+- un ou plusieurs **rôles d'accès**, qui définissent les **catégories de documents** consultables :
+  Manuel, Procédure SAV, Bulletin technique, Garantie, FAQ, Référentiel codes erreur.
+
+Un conseiller voit les catégories de tous ses rôles. Le filtre s'applique à la recherche, côté serveur : l'assistant
+ne reçoit et ne cite jamais un document que l'utilisateur n'a pas le droit de consulter (les fiches erreur exactes
+suivent la catégorie « Référentiel codes erreur »). Un conseiller sans rôle n'a accès à aucun document.
+
+Les rôles se gèrent dans **Administration › Rôles d'accès** ; on les attribue en créant ou modifiant un compte.
+Un rôle de départ « Accès complet » (toutes les catégories) est créé par les migrations.
+
 ## Commandes utiles
 
-| Commande | Rôle |
-|---|---|
-| `python -m backend.rag.terminal` | essayer l'assistant dans le terminal, sans le front |
-| `python -m backend.chargement.data` | découper la documentation sans toucher à la base ; résultat dans `assets/chunks.json` |
-| `python -m backend.ingestion` | réingérer après un ajout ou une modification de document (un document modifié est remplacé, un fichier supprimé disparaît de la base) |
-| `alembic revision --autogenerate -m "description"` | créer une migration après une modification de `backend/database/models.py` |
-| `alembic upgrade head` | appliquer les migrations en attente |
-| `alembic check` | vérifier que la base correspond aux modèles |
-| `alembic upgrade head --sql` | afficher le SQL complet du schéma |
-| `cd frontend && npm run build` | construire le front pour la production (dossier `frontend/dist/`) |
+| Commande                                             | Rôle                                                                                                                                        |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `python -m backend.rag.terminal`                   | essayer l'assistant dans le terminal, sans le front                                                                                          |
+| `python -m backend.chargement.data`                | découper la documentation sans toucher à la base ; résultat dans`assets/chunks.json`                                                    |
+| `python -m backend.ingestion`                      | réingérer après un ajout ou une modification de document (un document modifié est remplacé, un fichier supprimé disparaît de la base) |
+| `alembic revision --autogenerate -m "description"` | créer une migration après une modification de`backend/database/models.py`                                                                |
+| `alembic upgrade head`                             | appliquer les migrations en attente                                                                                                          |
+| `alembic check`                                    | vérifier que la base correspond aux modèles                                                                                                |
+| `alembic upgrade head --sql`                       | afficher le SQL complet du schéma                                                                                                           |
+| `cd frontend && npm run build`                     | construire le front pour la production (dossier`frontend/dist/`)                                                                           |
 
 Les logs détaillés sont dans `logs/briefrag.log`.
 
