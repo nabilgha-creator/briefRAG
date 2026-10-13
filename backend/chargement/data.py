@@ -1,9 +1,11 @@
-"""chargement des documents de la documentation (pdf, docx, html) : lecture, découpage, métadonnées.
+"""chargement de la documentation : lecture, découpage, métadonnées.
 
-produit des DocumentCharge prêts pour l'ingestion. ne dépend ni de la base de données ni de LangChain.
-le référentiel excel des codes erreur (.xlsx) est traité a part.
+- documents pdf, docx, html -> DocumentCharge (charger_documents)
+- référentiel excel des codes erreur -> Referentiel (charger_referentiel), qui donne aussi
+  un DocumentCharge d'un chunk par code erreur pour la recherche (document_du_referentiel)
 
-lancement depuis la racine du projet : python -m backend.data
+ne dépend ni de la base de données ni de LangChain.
+lancement depuis la racine du projet : python -m backend.chargement.data (écrit assets/chunks.json pour contrôle)
 """
 import json
 import logging
@@ -12,15 +14,18 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 
-from backend.chemin import ASSETS, DOCS
-from backend.chunker import MAX_TOKENS_CHUNK, TOKENS_RESERVES_CONTEXTE, compter_tokens
-from backend.lecture_docling import lire_document_docling
-from backend.lecture_html import lire_faq_html
-from backend.schemas import ChunkCharge, ChunkLu, DocumentCharge, DocumentLu
+from backend.config import ASSETS, DOCS
+from backend.chargement.chunker import MAX_TOKENS_CHUNK, TOKENS_RESERVES_CONTEXTE, compter_tokens
+from backend.chargement.lecture_docling import lire_document_docling
+from backend.chargement.lecture_excel import lire_referentiel
+from backend.chargement.lecture_html import lire_faq_html
+from backend.chargement.schemas import ChunkCharge, ChunkLu, DocumentCharge, DocumentLu, Referentiel
 
 logger = logging.getLogger(__name__)
 
 EXTENSIONS = {".pdf", ".docx", ".html"}
+FICHIER_REFERENTIEL = DOCS / "Referentiel_codes_erreur.xlsx"
+TYPE_REFERENTIEL = "Référentiel codes erreur"
 DOSSIER_CACHE = ASSETS / "cache_docling"
 FICHIER_EXPORT = ASSETS / "chunks.json"
 
@@ -108,8 +113,13 @@ def _construire_chunk(position : int, lu : ChunkLu, prefixe : str, modeles : set
 
 ## CHARGEMENT ##
 
+def source_du_fichier(chemin : Path) -> str :
+    """identifiant stable du fichier : son chemin relatif au dossier de documentation"""
+    return chemin.relative_to(DOCS).as_posix() if chemin.is_relative_to(DOCS) else chemin.name
+
+
 def lister_fichiers(dossier : Path = DOCS) -> list[Path] :
-    """fichiers a charger, hors fichiers temporaires office (~$...)"""
+    """documents a charger (hors référentiel excel et fichiers temporaires office ~$...)"""
     return sorted(chemin for chemin in dossier.rglob("*")
                   if chemin.is_file() and not chemin.name.startswith("~$") and chemin.suffix.lower() in EXTENSIONS)
 
@@ -138,8 +148,7 @@ def charger_document(chemin : Path) -> DocumentCharge :
         if compter_tokens(chunk.contenu) > MAX_TOKENS_CHUNK :
             logger.warning("%s : chunk %d trop long (%d tokens)", chemin.name, chunk.position, compter_tokens(chunk.contenu))
 
-    source = chemin.relative_to(DOCS).as_posix() if chemin.is_relative_to(DOCS) else chemin.name
-    return DocumentCharge(source=source, type_document=type_document, titre=titre,
+    return DocumentCharge(source=source_du_fichier(chemin), type_document=type_document, titre=titre,
                           version=_extraire_version(f"{lu.entete}\n{titre}"),
                           modeles=sorted(modeles), gammes=sorted(gammes), chunks=chunks)
 
@@ -166,6 +175,37 @@ def charger_documents(fichiers : list[Path]) -> list[DocumentCharge] :
     return documents
 
 
+## RÉFÉRENTIEL DES CODES ERREUR ##
+
+def charger_referentiel(chemin : Path = FICHIER_REFERENTIEL) -> Referentiel :
+    return lire_referentiel(chemin, source=source_du_fichier(chemin))
+
+
+def document_du_referentiel(referentiel : Referentiel) -> DocumentCharge :
+    """un chunk par code erreur et par gamme, pour que la recherche retrouve aussi le référentiel.
+    les modèles et le code viennent des colonnes du tableau : pas besoin de les deviner dans le texte"""
+    titre = "Référentiel des codes erreur" + (f" (version {referentiel.version})" if referentiel.version else "")
+    prefixe = f"[{TYPE_REFERENTIEL}] {titre}"
+    chunks = []
+    for position, erreur in enumerate(referentiel.erreurs) :
+        section = f"{erreur.type_appareil} série {erreur.gamme}"
+        texte = "\n".join([
+            f"{erreur.code} — {erreur.signification}",
+            f"Conduite à tenir (client) : {erreur.conduite}",
+            f"Intervention SAV (technicien) : {erreur.intervention}",
+            f"Modèles concernés : {', '.join(erreur.modeles)}",
+        ])
+        chunks.append(ChunkCharge(position=position, contenu="\n".join([prefixe, section, texte]), texte=texte,
+                                  titres=[section], pages=[], modeles=sorted(erreur.modeles), gammes=[],
+                                  codes_erreur=[erreur.code]))
+
+    modeles = sorted({modele for erreur in referentiel.erreurs for modele in erreur.modeles})
+    return DocumentCharge(source=referentiel.source, type_document=TYPE_REFERENTIEL, titre=titre,
+                          version=referentiel.version, modeles=modeles, gammes=[], chunks=chunks)
+
+
+## EXPORT ##
+
 def exporter_json(documents : list[DocumentCharge], chemin : Path = FICHIER_EXPORT) -> None :
     """écrit les documents et leurs chunks en json, pour les relire / contrôler"""
     with open(chemin, "w", encoding="utf-8") as fichier :
@@ -177,4 +217,4 @@ if __name__ == "__main__" :
     from logger import configurer_logs
 
     configurer_logs()
-    exporter_json(charger_documents(lister_fichiers()))
+    exporter_json([document_du_referentiel(charger_referentiel())] + charger_documents(lister_fichiers()))

@@ -2,6 +2,7 @@
 
 - ChunkLu / DocumentLu : ce que renvoient les lecteurs (lecture_docling, lecture_html), sans métadonnées métier
 - ChunkCharge / DocumentCharge : le résultat final de data.py, prêt pour l'ingestion en base
+- ErreurReferentiel / Referentiel : le référentiel excel des codes erreur (lecture_excel)
 
 aucune dépendance a la base de données ni a LangChain.
 """
@@ -35,6 +36,25 @@ class ChunkCharge :
     modeles : list[str]         # modèles cités explicitement, ex : ["WX-500"]
     gammes : list[str]          # gammes concernées entièrement, ex : ["LV"] (a résoudre en modèles a l'ingestion)
     codes_erreur : list[str]    # ex : ["E15", "E20"]
+
+
+@dataclass
+class ErreurReferentiel :
+    """une ligne du référentiel : un code erreur d'une gamme et les modèles qu'il concerne"""
+    gamme : str                 # WX
+    type_appareil : str         # Lave-linge
+    code : str                  # E23
+    signification : str
+    conduite : str              # conduite a tenir (client)
+    intervention : str          # intervention SAV (technicien)
+    modeles : list[str]
+
+
+@dataclass
+class Referentiel :
+    source : str
+    version : str | None
+    erreurs : list[ErreurReferentiel]
 
 
 @dataclass

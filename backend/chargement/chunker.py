@@ -16,9 +16,10 @@ from docling.chunking import HybridChunker
 from docling_core.transforms.chunker.line_chunker import LineBasedTokenChunker
 from dotenv import load_dotenv
 
+from backend.config import MODELE_EMBEDDING
+
 load_dotenv()   # HF_TOKEN
 
-MODELE_EMBEDDING = "BAAI/bge-m3"
 MAX_TOKENS_CHUNK = 512
 TOKENS_RESERVES_CONTEXTE = 64      # place laissée au préfixe "[type] titre du document" ajouté après le découpage
 MAX_TOKENS_LIGNE = 300

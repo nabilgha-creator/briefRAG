@@ -10,7 +10,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup, Tag
 
-from backend.schemas import ChunkLu, DocumentLu
+from backend.chargement.schemas import ChunkLu, DocumentLu
 
 logger = logging.getLogger(__name__)
 

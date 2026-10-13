@@ -19,8 +19,8 @@ from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.types.doc import ContentLayer, DoclingDocument, NodeItem, SectionHeaderItem, TableItem, TextItem
 
-from backend.chunker import creer_chunker
-from backend.schemas import ChunkLu, DocumentLu
+from backend.chargement.chunker import creer_chunker
+from backend.chargement.schemas import ChunkLu, DocumentLu
 
 logger = logging.getLogger(__name__)
 
