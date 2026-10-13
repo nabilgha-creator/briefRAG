@@ -1,0 +1,371 @@
+/* ==========================================================================
+   Thèmes : toutes les couleurs passent par ces variables
+   (classe posée sur <html> par le store theme)
+   ========================================================================== */
+
+.theme-sombre {
+  --fond: #0e1116;
+  --rail: #12161c;
+  --panneau: #151a21;
+  --carte: #171c23;
+  --eleve: #1c232c;
+  --eleve2: #222a35;
+  --bordure: #222a35;
+  --bordure2: #2e3744;
+  --bordure3: #3a4452;
+  --texte: #e8ebef;
+  --texte2: #dce1e7;
+  --texte3: #c6cdd6;
+  --doux: #9aa5b2;
+  --discret: #8d98a6;
+  --tres-discret: #6f7a88;
+  --acc1: #f9d25c;
+  --acc2: #f2843a;
+  --sur-acc: #1a1405;
+  --acc-texte: #f6b34a;
+  --acc-fond: #2a2312;
+  --acc-fond2: #1d1a12;
+  --halo: rgba(242, 150, 60, 0.24);
+  --degrade: linear-gradient(135deg, #f9d25c 0%, #f2843a 100%);
+  --succes: #5fd39a;
+  --erreur: #ff8f8f;
+  --erreur-fond: #3a1c1f;
+  --admin-fond: #2b2440;
+  --admin-texte: #c4b5ff;
+  --voile: rgba(5, 7, 10, 0.6);
+  --off: #3a4452;
+  --grille: rgba(255, 255, 255, 0.035);
+  --ombre: rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}
+
+.theme-clair {
+  --fond: #eef5fa;
+  --rail: #f6fafd;
+  --panneau: #ffffff;
+  --carte: #ffffff;
+  --eleve: #e6f0f7;
+  --eleve2: #ddeaf3;
+  --bordure: #d3e2ec;
+  --bordure2: #c9dae6;
+  --bordure3: #b5cbda;
+  --texte: #0f2230;
+  --texte2: #1d3443;
+  --texte3: #2c4555;
+  --doux: #4d6575;
+  --discret: #5d7483;
+  --tres-discret: #647a8a;
+  --acc1: #0b7a76;
+  --acc2: #15803d;
+  --sur-acc: #ffffff;
+  --acc-texte: #0b6e6a;
+  --acc-fond: #ddf3ef;
+  --acc-fond2: #eef9f6;
+  --halo: rgba(11, 122, 118, 0.2);
+  --degrade: linear-gradient(135deg, #0b7a76 0%, #15803d 100%);
+  --succes: #15803d;
+  --erreur: #b42318;
+  --erreur-fond: #fdecec;
+  --admin-fond: #ece8fb;
+  --admin-texte: #4b3a9e;
+  --voile: rgba(15, 34, 48, 0.35);
+  --off: #b5cbda;
+  --grille: rgba(15, 34, 48, 0.05);
+  --ombre: rgba(15, 34, 48, 0.1);
+  color-scheme: light;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+:root {
+  --police: 'Space Grotesk', system-ui, sans-serif;
+  --police-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --rayon: 14px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--police);
+  font-size: 15px;
+  color: var(--texte);
+  background-color: var(--fond);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* changement de thème : les couleurs glissent au lieu de sauter */
+body,
+.t {
+  transition: background-color 0.45s ease, color 0.45s ease, border-color 0.45s ease;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--acc-texte);
+}
+
+:focus-visible {
+  outline: 2px solid var(--acc2);
+  outline-offset: 2px;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+}
+
+::placeholder {
+  color: var(--discret);
+}
+
+::selection {
+  background-color: var(--halo);
+}
+
+.mono {
+  font-family: var(--police-mono);
+}
+
+/* lisible par les lecteurs d'écran, invisible a l'écran */
+.masque {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* barres de défilement discrètes */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bordure3) transparent;
+}
+
+/* ==========================================================================
+   Éléments réutilisés
+   ========================================================================== */
+
+.bouton-primaire {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 13px;
+  background-image: var(--degrade);
+  color: var(--sur-acc);
+  font-weight: 700;
+  box-shadow: 0 8px 20px var(--halo);
+  transition: transform 0.25s, box-shadow 0.25s, filter 0.25s, opacity 0.2s;
+}
+
+.bouton-primaire:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: saturate(1.15) brightness(1.05);
+  box-shadow: 0 14px 30px var(--halo);
+}
+
+.bouton-primaire:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.bouton-secondaire {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 18px;
+  border: 1.5px solid var(--bordure2);
+  border-radius: 13px;
+  background-color: transparent;
+  color: var(--texte2);
+  font-weight: 700;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.bouton-secondaire:hover {
+  border-color: var(--acc2);
+  color: var(--acc-texte);
+}
+
+.bouton-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 11px;
+  background-color: transparent;
+  color: var(--doux);
+  text-decoration: none;
+  transition: background-color 0.2s, color 0.2s, transform 0.3s;
+}
+
+.bouton-icone:hover:not(:disabled) {
+  background-color: var(--eleve);
+  color: var(--acc-texte);
+}
+
+.bouton-icone:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.champ {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 50px;
+  padding: 0 16px;
+  border: 1.5px solid var(--bordure2);
+  border-radius: 13px;
+  background-color: var(--eleve);
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.45s;
+}
+
+.champ:focus-within {
+  border-color: var(--acc2);
+  box-shadow: 0 0 0 4px var(--halo);
+}
+
+.champ input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+}
+
+.etiquette {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texte3);
+}
+
+.pastille {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 6px;
+  font-family: var(--police-mono);
+  font-size: 12px;
+  font-weight: 600;
+  background-color: var(--acc-fond);
+  color: var(--acc-texte);
+}
+
+/* citation [n] dans une réponse */
+.cite {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 1px;
+  padding: 0 7px;
+  border: 1px solid var(--bordure3);
+  border-radius: 6px;
+  background-color: var(--eleve);
+  color: var(--acc-texte);
+  font-family: var(--police-mono);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  vertical-align: 1px;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.cite:hover {
+  transform: translateY(-1px);
+  background-color: var(--eleve2);
+}
+
+.cite.active {
+  border-color: transparent;
+  background-image: var(--degrade);
+  color: var(--sur-acc);
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+@keyframes apparition {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes fondu-mot {
+  from { opacity: 0; filter: blur(6px); }
+  to { opacity: 1; filter: none; }
+}
+
+@keyframes tourne {
+  to { transform: rotate(360deg); }
+}
+
+.apparition {
+  animation: apparition 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.fondu-mot {
+  animation: fondu-mot 0.55s ease both;
+}
+
+.roue {
+  animation: tourne 0.9s linear infinite;
+}
+
+/* transitions de page (App.vue) et de contenu (LayoutConsole.vue) */
+.page-enter-active,
+.page-leave-active,
+.contenu-enter-active,
+.contenu-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.page-enter-from,
+.contenu-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-leave-to,
+.contenu-leave-to {
+  opacity: 0;
+}
+
+/* respect du réglage système "réduire les animations" */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
