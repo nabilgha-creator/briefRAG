@@ -28,6 +28,19 @@ def hacher_mot_de_passe(mot_de_passe : str) -> str :
     return f"scrypt${SCRYPT_N}${SCRYPT_R}${SCRYPT_P}${_b64(sel)}${_b64(empreinte)}"
 
 
+def empreinte_valide(empreinte : str) -> bool :
+    """vrai si le texte a la forme d'une empreinte produite par hacher_mot_de_passe"""
+    morceaux = empreinte.split("$")
+    if len(morceaux) != 6 or morceaux[0] != "scrypt" :
+        return False
+    try :
+        int(morceaux[1]), int(morceaux[2]), int(morceaux[3])
+        base64.b64decode(morceaux[4], validate=True), base64.b64decode(morceaux[5], validate=True)
+    except ValueError :
+        return False
+    return True
+
+
 def verifier_mot_de_passe(mot_de_passe : str, stocke : str) -> bool :
     try :
         algo, n, r, p, sel, empreinte = stocke.split("$")

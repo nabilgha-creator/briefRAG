@@ -70,6 +70,10 @@ DB_PASSWORD=...
 # LLM via OpenRouter (obligatoire)
 CLE_OPENR=sk-or-...
 
+# compte administrateur d'amorçage (cf. "Définir le compte administrateur")
+ADMIN_IDENTIFIANT=admin
+ADMIN_EMPREINTE='scrypt$...'
+
 # facultatif
 HF_TOKEN=...                                  # token Hugging Face (téléchargement des modèles)
 MODELE_LLM=anthropic/claude-haiku-4.5         # modèle OpenRouter (valeur par défaut)
@@ -103,13 +107,29 @@ Lit le référentiel des codes erreur puis tous les documents, les découpe, cal
 Le premier passage prend une dizaine de minutes (conversion des PDF, téléchargement du modèle bge-m3 d'environ 2 Go) ;
 les conversions sont ensuite gardées en cache dans `assets/cache_docling/`.
 
-### 3. Créer le premier administrateur
+### 3. Définir le compte administrateur
+
+Le premier compte est défini dans le `.env` par l'**empreinte** de son mot de passe (jamais le mot de passe en clair).
+Générez-la :
 
 ```bash
-python -m backend.auth.creer_admin
+python -m backend.auth.empreinte
 ```
 
-Les autres comptes se créent ensuite depuis la page **Administration** de l'application.
+puis copiez les lignes affichées dans le `.env` (gardez les guillemets simples) :
+
+```ini
+ADMIN_IDENTIFIANT=admin
+ADMIN_EMPREINTE='scrypt$16384$8$1$...$...'
+ADMIN_NOM=Administrateur          # facultatif
+```
+
+Au démarrage de l'API, si aucun administrateur actif n'existe, ce compte est créé : connectez-vous avec cet
+identifiant et le mot de passe choisi. Dès qu'un administrateur actif existe, le `.env` ne modifie plus rien ;
+si plus aucun administrateur n'est actif (compte désactivé, mot de passe perdu…), redémarrer l'API rétablit l'accès.
+
+Les autres comptes se créent ensuite depuis la page **Administration** de l'application
+(ou en ligne de commande : `python -m backend.auth.creer_admin`).
 
 ## Lancer l'application
 

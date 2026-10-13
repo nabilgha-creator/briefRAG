@@ -15,6 +15,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api import routes_auth, routes_conversations, routes_utilisateurs
+from backend.auth.admin_initial import assurer_admin_initial
+from backend.database.db import SessionLocal
 from backend.rag.embeddings import vectoriser_question
 from logger import configurer_logs
 
@@ -24,6 +26,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def cycle_de_vie(_ : FastAPI) -> AsyncIterator[None] :
     configurer_logs()
+    with SessionLocal.begin() as session :
+        assurer_admin_initial(session)       # compte admin d'amorçage du .env si aucun admin actif
     vectoriser_question("préchargement")     # charge bge-m3 au démarrage plutôt qu'a la 1re question (~10 s)
     logger.info("API prête")
     yield

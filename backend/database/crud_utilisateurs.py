@@ -27,9 +27,14 @@ def lister_utilisateurs(session : Session) -> list[Utilisateur] :
 
 def creer_utilisateur(session : Session, identifiant : str, nom : str, mot_de_passe : str, role : str = "conseiller") -> Utilisateur :
     """lève ValueError si l'identifiant est déjà pris ou si le mot de passe est trop court"""
+    return creer_utilisateur_avec_empreinte(session, identifiant, nom, hacher_mot_de_passe(mot_de_passe), role)
+
+
+def creer_utilisateur_avec_empreinte(session : Session, identifiant : str, nom : str, empreinte : str, role : str = "conseiller") -> Utilisateur :
+    """comme creer_utilisateur, a partir d'une empreinte de mot de passe déjà calculée (compte d'amorçage du .env)"""
     if get_utilisateur_par_identifiant(session, identifiant) is not None :
         raise ValueError(f"l'identifiant {identifiant} est déjà utilisé")
-    utilisateur = Utilisateur(identifiant=identifiant, nom=nom, mot_de_passe=hacher_mot_de_passe(mot_de_passe), role=role)
+    utilisateur = Utilisateur(identifiant=identifiant, nom=nom, mot_de_passe=empreinte, role=role)
     session.add(utilisateur)
     session.flush()
     logger.info("utilisateur créé : %s (%s)", identifiant, role)
