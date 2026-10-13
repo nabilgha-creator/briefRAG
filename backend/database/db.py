@@ -1,28 +1,30 @@
 from sqlalchemy import create_engine, URL, text
+from sqlalchemy.orm import sessionmaker
 import os 
 from dotenv import load_dotenv
 
 load_dotenv()
 #connection a la base 
 
-def get_connection():
-    """ouvre une connection a la db"""
-    try: 
-        DATABASE_URL =URL.create("postgresql+psycopg",username=os.getenv("DB_USER"),
-                                 password=os.getenv("DB_PASSWORD"), host=os.getenv("DB_HOST") , 
-                                 port= os.getenv("DB_PORT"))
-        engine = create_engine(DATABASE_URL, echo=True)
-        conn = engine.connect()
-        return conn
-    except Exception as e :
-        return (f'defaut de connection a la base : {e}') 
+DATABASE_URL = URL.create(drivername="postgresql+psycopg", #on crée la chaine url via URL.create 
+                          username=os.getenv("DB_USER"),
+                          password=os.getenv("DB_PASSWORD"),
+                          host=os.getenv("DB_HOST"),
+                          port=os.getenv("DB_PORT"),
+                          database=os.getenv("DB_NAME"))
+
+engine = create_engine(DATABASE_URL, echo=True) #on crée l'engine , le pool de connexion a la base 
+SessionLocal = sessionmaker(bind=engine) #mis en place d'une "fabrique" de session , permet d'utiliser une seule connexion plutôt qu'ouvrir une connexion par requete
+
+def get_session():
+    """renvoie une nouvelle session"""
+    return SessionLocal() 
 
 
-if __name__ == "__main__" :
-    conn = get_connection()
-    base = conn.execute(text("SELECT version(), current_database();"))
-    base = base.fetchone()
-    conn.close()
+if __name__ == "__main__":
+    with get_session() as session:
+        version, base = session.execute(text("SELECT version(), current_database();")).one()
+        print(base, "-", version)
     
     
     
