@@ -27,9 +27,9 @@ def test_modele_reconnu_mais_pas_compte_comme_reference(ecriture) :
     assert "wx-500" in termes.tous and not termes.references          # les modèles servent déjà de filtre
 
 
-def test_mots_vides_accents_et_pluriels() :
-    termes = decouper("Comment nettoyer les filtres de vidange bouchés ?")
-    assert termes.tous == ["nettoyer", "filtre", "vidange", "bouche"]
+def test_mots_vides_et_racines() :
+    assert decouper("Comment nettoyer les filtres bouchés ?").tous == decouper("nettoyer filtre bouché").tous    # mots vides, pluriels
+    assert decouper("n'évacue plus").tous[-1] == decouper("évacuation").tous[0] == "evacu"                  # racine Snowball
     assert "44" not in decouper("pièce 44-3311").tous                 # les morceaux d'une référence ne comptent pas en plus
 
 
@@ -49,11 +49,12 @@ def index() -> IndexLexical :
 def test_terme_rare_compte_plus_qu_un_terme_present_partout() :
     # "lave-linge" dans 10 chunks sur 11, "relais" dans un seul : comme dans la vraie documentation
     index = IndexLexical([(numero, f"lave-linge, programme {numero}") for numero in range(1, 11)] + [(11, "relais de la carte")])
-    assert index.idf("relai") > index.idf("lave")
+    assert index.idf(decouper("relais").tous[0]) > index.idf("lav")
     assert index.scores("relais du lave-linge")[0].id_chunk == 11
 
 
 def test_repeter_un_terme_aide_de_moins_en_moins(index) :
+    index.part_discriminante = 1.0                     # tous les termes comptent (sinon "lave-linge" est trop courant)
     scores = {resultat.id_chunk : resultat.score for resultat in index.scores("lave-linge")}
     assert scores[4] > scores[2]                       # 4 occurrences contre 1...
     assert scores[4] < 4 * scores[2]                   # ... mais pas 4 fois plus (saturation)
@@ -65,8 +66,21 @@ def test_reference_comptee_double_et_signalee(index) :
 
 
 def test_chunks_autorises_seulement_et_aucun_terme_commun(index) :
+    index.part_discriminante = 1.0
     assert [resultat.id_chunk for resultat in index.scores("lave-linge", autorises={2, 5})] == [2]
     assert index.scores("pyrolyse") == []
+
+
+def test_que_des_mots_courants_aucun_resultat(index) :
+    """non-régression : "lave-linge" (dans 3 chunks sur 5) ramenait des chunks quelconques, qui évinçaient les bons"""
+    assert index.scores("lave-linge") == []
+    assert [resultat.id_chunk for resultat in index.scores("filtre du lave-linge")] == [1]      # "filtre" est discriminant
+
+
+def test_le_modele_ne_compte_pas_dans_la_requete() :
+    """le modèle est déjà un filtre : compté, il favorisait tous les chunks de son manuel"""
+    index = IndexLexical([(1, "Manuel WX-300 : consignes WX-300"), (2, "Procédure : évacuation de l'eau")])
+    assert [resultat.id_chunk for resultat in index.scores("mon WX-300 n'évacue plus")] == [2]
 
 
 ## FUSION DES CLASSEMENTS ##
