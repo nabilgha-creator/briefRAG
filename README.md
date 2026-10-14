@@ -9,6 +9,9 @@ bulletins techniques, garanties, FAQ, référentiel des codes erreur) et cite se
 - **Réponses en streaming**, sources numérotées avec extrait, fichier et pages
 - **Lecteur de documents** : un clic sur une source ouvre le document (manuel PDF, procédure, FAQ, référentiel)
   au passage cité, surligné ; les droits de lecture des rôles s'appliquent aussi aux fichiers
+- **Contacter le SAV** : quand la réponse oriente vers un technicien ou que l'information manque, le LLM termine
+  par le marqueur `[SAV]` ; le serveur le retire et le front affiche un bouton avec le numéro du SAV client
+  (`CONTACT_SAV` dans `backend/config.py`, route `GET /sav`)
 - **Conversations enregistrées**, comptes utilisateurs, administration et journal des connexions
 - **Front Vue.js** animé, thème sombre / clair
 
@@ -16,7 +19,7 @@ bulletins techniques, garanties, FAQ, référentiel des codes erreur) et cite se
 
 ```
 backend/
-├── config.py          chemins et modèle d'embedding
+├── config.py          chemins, modèle d'embedding, coordonnées du SAV client
 ├── ingestion.py       documentation -> base (python -m backend.ingestion)
 ├── chargement/        lecture et découpage des documents (pdf, docx, html, xlsx), sans base
 ├── database/          connexion, tables SQLAlchemy, accès aux données (CRUD)
