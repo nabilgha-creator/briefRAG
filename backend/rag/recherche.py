@@ -174,7 +174,7 @@ def _rechercher_equilibre(session : Session, vecteur : list[float], a_considerer
             for paire in rechercher_chunks(session, vecteur, par_groupe, modeles=noms, categories=categories)]
 
 
-def _texte_de_recherche(question : str, questions_precedentes : list[str]) -> str :
+def texte_de_recherche(question : str, questions_precedentes : list[str]) -> str :
     """une question courte ("et comment je fais ?") dépend de la précédente : on les cherche ensemble"""
     if questions_precedentes and len(question.split()) < MOTS_QUESTION_COURTE :
         return f"{questions_precedentes[-1]}\n{question}"
@@ -203,7 +203,7 @@ def rechercher_contexte(session : Session, question : str, questions_precedentes
             fiches.extend(_fiches(erreurs, code, premier_numero=len(fiches) + 1))
             ids_erreurs.extend(erreur.id_erreur for erreur in erreurs)
 
-    vecteur = vectoriser_question(_texte_de_recherche(question, questions_precedentes))
+    vecteur = vectoriser_question(texte_de_recherche(question, questions_precedentes))
     filtre = appareils.modeles or None
     proches = _rechercher_equilibre(session, vecteur, appareils.modeles, modeles, categories)
     lies = (rechercher_chunks(session, vecteur, NB_EXTRAITS_LIES_AUX_ERREURS, modeles=filtre, ids_erreurs=ids_erreurs, categories=categories)

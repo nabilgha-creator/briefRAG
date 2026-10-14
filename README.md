@@ -177,6 +177,24 @@ pytest -m "not integration"  # tests unitaires seuls : ni base, ni réseau (≈ 
   comptes `test_…` et des rôles `Test …`, supprimés à la fin, et sont sautés si la base est injoignable.
   Le LLM est remplacé par une réponse fixe : aucun appel à OpenRouter, aucun coût.
 
+## Évaluation de la recherche
+
+```bash
+python -m backend.evaluation.recall                             # réglages actuels
+python -m backend.evaluation.recall --seuil 0.6 --extraits 6    # comparer d'autres réglages, sans modifier le code
+```
+
+Lance la vraie recherche du chatbot sur un jeu de 26 questions de référence (`backend/evaluation/questions_recall.json`,
+avec pour chacune les documents qui contiennent la réponse) et mesure, sans appeler le LLM :
+
+- le **rappel** : part des documents attendus qui sont bien envoyés au LLM (1 = rien ne manque) ;
+- la **précision** : part des extraits envoyés qui sont utiles ;
+- le **MRR** : un document utile arrive-t-il en tête ?
+- les **fiches erreur** exactes fournies.
+
+Pour chaque document manquant, le rapport dit pourquoi (seuil de distance, classement, dédoublonnage, filtre des
+modèles). Le rapport est aussi enregistré dans `assets/evaluation/` pour comparer les mesures dans le temps.
+
 ## Commandes utiles
 
 | Commande                                             | Rôle                                                                                                                                        |
