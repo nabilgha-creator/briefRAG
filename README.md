@@ -196,7 +196,7 @@ python -m backend.evaluation.recall --seuil 0.6 --extraits 6    # comparer d'aut
 python -m backend.evaluation.recall --sans-lexicale             # recherche par vecteurs seule
 ```
 
-Lance la vraie recherche du chatbot sur un jeu de 33 questions de référence (`backend/evaluation/questions_recall.json`,
+Lance la vraie recherche du chatbot sur un jeu de 34 questions de référence (`backend/evaluation/questions_recall.json`,
 avec pour chacune les documents qui contiennent la réponse) et mesure, sans appeler le LLM :
 
 - le **rappel** : part des documents attendus qui sont bien envoyés au LLM (1 = rien ne manque) ;
