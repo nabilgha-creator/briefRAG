@@ -41,15 +41,16 @@ def separer_contact_sav(texte : str) -> tuple[str, bool] :
     return texte.replace(MARQUEUR_SAV, "").rstrip(), MARQUEUR_SAV in texte
 
 
-def pour_historique(texte : str) -> str :
-    """message renvoyé au LLM dans l'historique : tronqué, sans les [n] (leurs sources ne sont plus jointes,
-    le LLM les prendrait pour des inventions ou pour les sources du tour en cours)"""
-    return re.sub(r"\s*" + RE_CITATION.pattern, "", texte)[:MAX_CARACTERES_MESSAGE]
+def pour_historique(texte : str, titres_sources : list[str] | None = None) -> str :
+    """message renvoyé au LLM dans l'historique : tronqué, sans les [n] (le LLM les prendrait pour les sources du tour
+    en cours), suivi des titres des sources citées : sans eux, il croit avoir inventé ce qu'il ne retrouve plus"""
+    texte = re.sub(r"\s*" + RE_CITATION.pattern, "", texte)[:MAX_CARACTERES_MESSAGE]
+    return f"{texte}\n(Sources de cette réponse : {' ; '.join(titres_sources)})" if titres_sources else texte
 
 
 def historique_conversation(session : Session, conversation : Conversation) -> list[dict[str, str]] :
     """derniers messages au format du LLM"""
-    return [{"role": message.role, "content": pour_historique(message.contenu)}
+    return [{"role": message.role, "content": pour_historique(message.contenu, [source["titre"] for source in message.sources or []])}
             for message in derniers_messages(session, conversation, MAX_MESSAGES_HISTORIQUE)]
 
 

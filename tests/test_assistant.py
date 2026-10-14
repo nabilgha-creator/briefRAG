@@ -3,7 +3,7 @@ from backend.auth.droits import categories_autorisees, peut_lire
 from backend.database.crud_conversations import titre_depuis_question
 from backend.database.models import Role, Utilisateur
 from backend.rag.assistant import pour_historique, references_citees, separer_contact_sav
-from backend.rag.prompts import PROMPT_SYSTEME, construire_messages, formater_pages, message_avec_contexte
+from backend.rag.prompts import PROMPT_SYSTEME, RAPPEL_RELANCE, construire_messages, formater_pages, message_avec_contexte
 from backend.rag.recherche import Appareils, Contexte, Extrait, FicheErreur, Reference
 
 
@@ -44,6 +44,11 @@ def test_messages_envoyes_au_llm() :
     assert messages[0] == {"role": "system", "content": PROMPT_SYSTEME}
     assert messages[1:3] == historique                                # l'historique ne contient pas d'anciens extraits
     assert messages[-1]["role"] == "user" and messages[-1]["content"].endswith("Nouvelle question ?")
+    assert RAPPEL_RELANCE in messages[-1]["content"]
+
+
+def test_pas_de_rappel_a_la_premiere_question() :
+    assert RAPPEL_RELANCE not in construire_messages("Première question ?", [], _contexte())[-1]["content"]
 
 
 def test_pages_lisibles() :
@@ -82,6 +87,12 @@ def test_titre_tire_de_la_premiere_question() :
 def test_historique_sans_numeros_de_citation() :
     """les sources des tours précédents ne sont plus jointes : un [2] resté dans l'historique faisait douter le LLM"""
     assert pour_historique("La porte reste verrouillée 30 à 45 min [2]. Voir [1][3].") == "La porte reste verrouillée 30 à 45 min. Voir."
+
+
+def test_historique_rappelle_les_titres_des_sources() :
+    """sans les titres, le LLM ne retrouvait plus le manuel FR-650 et croyait l'avoir inventé"""
+    assert (pour_historique("Absent du manuel FR-650 [2].", ["Manuel FR-650", "FAQ fours"])
+            == "Absent du manuel FR-650.\n(Sources de cette réponse : Manuel FR-650 ; FAQ fours)")
 
 
 def test_marqueur_sav_retire_et_signale() :

@@ -29,7 +29,7 @@ def converser() -> None :
             preparation = preparer(session, question, historique)
         print("\nAssistant : ", end="", flush=True)
         if preparation.messages is None :
-            texte = preparation.reponse_directe
+            texte, sources = preparation.reponse_directe, []
             print(texte)
         else :
             morceaux = []
@@ -48,7 +48,7 @@ def converser() -> None :
                 print("\n\nSources :")
                 for source in sources :
                     print(f"  [{source.numero}] {source.titre} ({source.source}{formater_pages(source.pages)})")
-        historique += [{"role": "user", "content": question}, {"role": "assistant", "content": pour_historique(texte)}]
+        historique += [{"role": "user", "content": question}, {"role": "assistant", "content": pour_historique(texte, [source.titre for source in sources])}]
 
 
 if __name__ == "__main__" :

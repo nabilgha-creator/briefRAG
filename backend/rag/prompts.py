@@ -5,8 +5,8 @@ from backend.rag.recherche import Contexte, Extrait, FicheErreur
 PROMPT_SYSTEME = """Tu es l'assistant interne des conseillers du service après-vente Electrodomus (lave-linge WX, lave-vaisselle LV, fours FR).
 
 Règles :
-- Réponds uniquement à partir des fiches erreur et des extraits fournis avec la question. Si l'information n'y est pas, dis-le et indique ce qu'il faudrait préciser. N'invente jamais un code, une référence de pièce, une durée ou une condition de garantie.
-- Les sources des échanges précédents ne sont plus jointes : ne remets pas en cause tes réponses précédentes faute de les revoir.
+- Réponds uniquement à partir des fiches erreur et des extraits fournis avec la question. Si l'information n'y est pas, dis-le (sans en conclure qu'elle manque au document entier) et indique ce qu'il faudrait préciser. N'invente jamais un code, une référence de pièce, une durée ou une condition de garantie.
+- Chaque question reçoit ses propres extraits ; tes réponses précédentes reposaient sur d'autres, vérifiés, dont seuls les titres sont rappelés. Ne corrige une réponse précédente que si les extraits actuels la contredisent, jamais parce qu'ils ne la mentionnent pas.
 - Un code erreur n'a pas le même sens selon l'appareil : précise toujours le modèle ou la gamme concernés. Ne redemande le modèle que si la réponse en dépend (si la fiche est la même pour tous les modèles de la gamme, réponds directement).
 - En cas de contradiction : un bulletin technique prévaut sur le référentiel des codes erreur, qui prévaut sur les manuels. Signale la contradiction.
 - Distingue ce que le client peut faire lui-même de ce qui demande un technicien.
@@ -15,6 +15,9 @@ Règles :
 - Si ta réponse oriente vers un technicien ou le service après-vente, ou si l'information manque dans les sources, termine par une dernière ligne contenant seulement [SAV]."""
 
 MARQUEUR_SAV = "[SAV]"         # retiré de la réponse par assistant.py : il affiche le bouton « Contacter le SAV »
+
+# relance : sans ce rappel près de la question, le LLM « corrige » encore 1 réponse sur 8 dont il ne retrouve pas la source
+RAPPEL_RELANCE = "(Ces sources valent pour cette question seulement : ne corrige pas tes réponses précédentes faute d'y retrouver leurs informations.)"
 
 MESSAGE_PRECISION_MODELE = ("La signification de ce code erreur dépend de l'appareil. Pouvez-vous préciser le modèle "
                             "(par exemple WX-500, LV-200 ou FR-700, indiqué sur l'étiquette signalétique) ?")
@@ -47,11 +50,13 @@ def _appareil(contexte : Contexte) -> str :
     return "Appareil : non précisé"
 
 
-def message_avec_contexte(question : str, contexte : Contexte) -> str :
-    """le message utilisateur envoyé au LLM : appareil, sources numérotées, puis la question"""
+def message_avec_contexte(question : str, contexte : Contexte, relance : bool = False) -> str :
+    """le message utilisateur envoyé au LLM : appareil, sources numérotées, (rappel si relance), puis la question"""
     parties = [_appareil(contexte)]
     sources = [_fiche(fiche) for fiche in contexte.fiches] + [_extrait(extrait) for extrait in contexte.extraits]
     parties.append("<sources>\n" + "\n\n".join(sources) + "\n</sources>" if sources else "<sources>aucune source pertinente trouvée</sources>")
+    if relance :
+        parties.append(RAPPEL_RELANCE)
     parties.append(f"Question : {question}")
     return "\n\n".join(parties)
 
@@ -59,4 +64,4 @@ def message_avec_contexte(question : str, contexte : Contexte) -> str :
 def construire_messages(question : str, historique : list[dict[str, str]], contexte : Contexte) -> list[dict[str, str]] :
     """historique : messages précédents {"role", "content"} déjà réduits aux derniers échanges"""
     return ([{"role": "system", "content": PROMPT_SYSTEME}] + historique
-            + [{"role": "user", "content": message_avec_contexte(question, contexte)}])
+            + [{"role": "user", "content": message_avec_contexte(question, contexte, relance=bool(historique))}])
