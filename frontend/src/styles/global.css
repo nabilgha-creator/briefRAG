@@ -56,14 +56,14 @@
   --discret: #5d7483;
   --tres-discret: #647a8a;
   --acc1: #0b7a76;
-  --acc2: #15803d;
+  --acc2: #12e65f;
   --sur-acc: #ffffff;
   --acc-texte: #0b6e6a;
   --acc-fond: #ddf3ef;
   --acc-fond2: #eef9f6;
   --halo: rgba(11, 122, 118, 0.2);
-  --degrade: linear-gradient(135deg, #0b7a76 0%, #15803d 100%);
-  --succes: #15803d;
+  --degrade: linear-gradient(135deg, #0b7a76 0%, #12e65f 100%);
+  --succes: #12e65f;
   --erreur: #b42318;
   --erreur-fond: #fdecec;
   --admin-fond: #ece8fb;
