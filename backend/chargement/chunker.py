@@ -1,4 +1,4 @@
-"""configuration du découpage : tokenizer du modèle d'embedding et chunkers Docling.
+"""configuration du découpage : tokenizer du modèle d'embedding et chunker Docling.
 
 les objets sont créés a la premiere utilisation (et une seule fois) plutôt qu'a l'import :
 importer ce module ne télécharge / ne charge rien.
@@ -13,7 +13,6 @@ from docling_core.transforms.serializer.base import BaseDocSerializer, BaseTable
 from docling_core.transforms.serializer.common import create_ser_result
 from docling_core.types.doc import DoclingDocument, TableItem
 from docling.chunking import HybridChunker
-from docling_core.transforms.chunker.line_chunker import LineBasedTokenChunker
 from dotenv import load_dotenv
 
 from backend.config import MODELE_EMBEDDING
@@ -22,7 +21,6 @@ load_dotenv()   # HF_TOKEN
 
 MAX_TOKENS_CHUNK = 512
 TOKENS_RESERVES_CONTEXTE = 64      # place laissée au préfixe "[type] titre du document" ajouté après le découpage
-MAX_TOKENS_LIGNE = 300
 
 
 @lru_cache
@@ -73,18 +71,12 @@ class FournisseurSerialiseur(ChunkingSerializerProvider) :
         return SerialiseurDocument(doc=doc)
 
 
-## CHUNKERS ##
+## CHUNKER ##
 
 @lru_cache
 def creer_chunker() -> HybridChunker :
     """chunker des documents structurés (pdf, docx) : suit les sections, fusionne les petits morceaux voisins
-    de la même section, et découpe les grands tableaux entre deux lignes"""
+    de la même section, et découpe les grands tableaux entre deux lignes.
+    (le référentiel excel n'en a pas besoin : data.py en fait un chunk par code erreur)"""
     tokenizer = HuggingFaceTokenizer(tokenizer=_tokenizer_hf(), max_tokens=MAX_TOKENS_CHUNK - TOKENS_RESERVES_CONTEXTE)
     return HybridChunker(tokenizer=tokenizer, merge_peers=True, repeat_table_header=True, serializer_provider=FournisseurSerialiseur())
-
-
-@lru_cache
-def creer_chunker_ligne() -> LineBasedTokenChunker :
-    """chunker ligne par ligne (tableaux type excel)"""
-    tokenizer = HuggingFaceTokenizer(tokenizer=_tokenizer_hf(), max_tokens=MAX_TOKENS_LIGNE)
-    return LineBasedTokenChunker(tokenizer=tokenizer, omit_prefix_on_overflow=False)
