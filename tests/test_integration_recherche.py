@@ -32,6 +32,15 @@ def test_bulletin_technique_remonte_pour_e52_wx500(session_bd) :
     assert any("BT-2026-007" in source for source in _sources(contexte))
 
 
+def test_fiche_erreur_oriente_la_recherche(session_bd) :
+    """E05 du FR-600 = « verrouillage de porte pyrolyse » : la procédure qui dit que le FR-600 n'a pas de pyrolyse
+    doit remonter (contradiction à signaler), sans les lignes du référentiel des autres codes"""
+    contexte = rechercher_contexte(session_bd, "Mon FR-600 affiche E05, que faire ?", [])
+    sources = _sources(contexte)
+    assert any("PROC-FR-01" in source for source in sources)
+    assert not any("Referentiel" in source for source in sources)
+
+
 def test_extraits_filtres_sur_le_modele(session_bd) :
     contexte = rechercher_contexte(session_bd, "Comment nettoyer le filtre de vidange de mon WX-300 ?", [])
     manuels = [source for source in _sources(contexte) if source.startswith("Manuels/")]

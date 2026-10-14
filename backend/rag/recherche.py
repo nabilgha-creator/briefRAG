@@ -229,19 +229,22 @@ def texte_de_recherche(question : str, questions_precedentes : list[str]) -> str
 def _extraits(session : Session, texte : str, question : str, appareils : Appareils, modeles : list[Modele],
               categories : list[str] | None, ids_erreurs : list[int], fiches : list[FicheErreur]) -> list[Extrait] :
     """extraits proches + extraits liés aux erreurs, numérotés après les fiches.
-    vecteurs : texte (question précédente comprise pour une relance) ; termes exacts : la question seule"""
-    vecteur = vectoriser_question(texte)
+    vecteurs : texte (question précédente comprise pour une relance) + signification des fiches ; termes exacts : la question seule"""
+    # "FR-600 affiche E05" ne dit pas "pyrolyse" : sans la fiche, la procédure qui exclut le FR-600 arrivait 8e
+    significations = dict.fromkeys(f"{fiche.code} : {fiche.signification}" for fiche in fiches)
+    vecteur = vectoriser_question("\n".join([texte, *significations]))
     proches = _rechercher_equilibre(session, vecteur, question, appareils.modeles, modeles, categories)
     lies = (rechercher_chunks(session, vecteur, NB_EXTRAITS_LIES_AUX_ERREURS, modeles=appareils.modeles or None,
                               ids_erreurs=ids_erreurs, categories=categories) if ids_erreurs else [])
 
-    # écartés (tokens) : texte déjà retenu (même paragraphe dans plusieurs manuels), ligne du référentiel déjà en fiche
-    deja_fournis = [f"{fiche.code} — {fiche.signification}" for fiche in fiches]
+    # écartés (tokens) : texte déjà retenu (même paragraphe dans plusieurs manuels) ; lignes du référentiel quand la
+    # question a ses fiches exactes (la sienne est déjà en fiche, les autres codes sont du bruit)
     retenus : dict[int, tuple[Chunk, float]] = {}
     textes_vus : set[str] = set()
     for chunk, distance in sorted(lies + proches, key=lambda paire : paire[1]) :
         texte_sans_titre = chunk.contenu.split("\n", 1)[-1]
-        if chunk.id_chunk in retenus or texte_sans_titre in textes_vus or any(ligne in chunk.contenu for ligne in deja_fournis) :
+        if (chunk.id_chunk in retenus or texte_sans_titre in textes_vus
+                or (fiches and chunk.rel_document.categorie == CATEGORIE_REFERENTIEL)) :
             continue
         retenus[chunk.id_chunk] = (chunk, distance)
         textes_vus.add(texte_sans_titre)
