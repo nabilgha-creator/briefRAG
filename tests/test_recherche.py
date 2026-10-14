@@ -4,8 +4,8 @@ from types import SimpleNamespace
 import pytest
 
 from backend.database.models import Modele
-from backend.rag.recherche import (Appareils, Contexte, Extrait, FicheErreur, _apercu, _fiches, analyser_appareils,
-                                   extraire_codes)
+from backend.rag.recherche import (Appareils, Contexte, Extrait, FicheErreur, _apercu, _fiches, _sans_doublons,
+                                   analyser_appareils, extraire_codes)
 
 
 @pytest.fixture
@@ -104,6 +104,16 @@ def test_references_disent_quoi_ouvrir_dans_le_lecteur() :
     fiche, extrait = contexte.references()
     assert (fiche.document, fiche.id_chunk) == ("Referentiel_codes_erreur.xlsx", None)     # la fiche ouvre le référentiel
     assert (extrait.document, extrait.id_chunk) == ("Manuels/Manuel_WX-500.pdf", 42)
+
+
+def test_doublons_retires_avant_de_garder_les_meilleurs() :
+    """non-régression : le même paragraphe dans 5 manuels prenait les 5 places, puis était dédoublonné (2 extraits restaient)"""
+    copies = [(SimpleNamespace(contenu=f"[Manuel] Manuel WX-{n}\nRetirez les brides de transport"), 0.33) for n in range(300, 550, 50)]
+    procedure = (SimpleNamespace(contenu="[Procédure SAV] Brides\nSi le code E31 est affiché"), 0.36)
+    faq = (SimpleNamespace(contenu="[FAQ] Lave-linge\nQuestion : pourquoi mon lave-linge vibre ?"), 0.28)
+    gardes = _sans_doublons([faq, *copies, procedure], limite=3)
+    assert [chunk.contenu.split("\n")[1] for chunk, _ in gardes] == [
+        "Question : pourquoi mon lave-linge vibre ?", "Retirez les brides de transport", "Si le code E31 est affiché"]
 
 
 def test_apercu_sans_ligne_de_contexte_et_tronque() :

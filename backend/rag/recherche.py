@@ -22,6 +22,7 @@ NB_EXTRAITS = 5                                          # extraits les plus pro
 NB_EXTRAITS_LIES_AUX_ERREURS = 3                         # extraits liés aux erreurs citées, en plus
 SEUIL_DISTANCE = 0.55                                    # au-delà, un extrait est jugé hors sujet (distance cosinus ;
                                                          # calibré : pertinents 0.28-0.52, hors sujet 0.68 et plus)
+CANDIDATS_PAR_EXTRAIT = 4                                # candidats demandés par extrait gardé, avant dédoublonnage
 MOTS_QUESTION_COURTE = 8                                 # en dessous, la question précédente est ajoutée a la recherche
 
 
@@ -159,6 +160,26 @@ def _appareils_des_codes(session : Session, codes : list[str], modeles : list[Mo
     return Appareils(type_appareil=type_appareil, modeles=[modele.modele for modele in modeles if modele.type == type_appareil])
 
 
+def _sans_doublons(proches : list[tuple[Chunk, float]], limite : int) -> list[tuple[Chunk, float]] :
+    """les `limite` extraits les plus proches dont les textes diffèrent (le titre du document, 1re ligne, est ignoré)"""
+    gardes, textes_vus = [], set()
+    for chunk, distance in proches :
+        texte = chunk.contenu.split("\n", 1)[-1]
+        if texte not in textes_vus :
+            textes_vus.add(texte)
+            gardes.append((chunk, distance))
+        if len(gardes) == limite :
+            break
+    return gardes
+
+
+def _plus_proches(session : Session, vecteur : list[float], limite : int, modeles : list[str] | None,
+                  categories : list[str] | None) -> list[tuple[Chunk, float]] :
+    """le même paragraphe revient dans les manuels de plusieurs modèles : on demande plus de candidats que nécessaire
+    et on retire les doublons AVANT de garder les `limite` meilleurs (sinon les copies prennent toutes les places)"""
+    return _sans_doublons(rechercher_chunks(session, vecteur, limite * CANDIDATS_PAR_EXTRAIT, modeles=modeles, categories=categories), limite)
+
+
 def _rechercher_equilibre(session : Session, vecteur : list[float], a_considerer : list[str], modeles : list[Modele],
                           categories : list[str] | None) -> list[tuple[Chunk, float]] :
     """extraits les plus proches. si la question couvre plusieurs types d'appareils ("lave-linge et fours"),
@@ -168,10 +189,9 @@ def _rechercher_equilibre(session : Session, vecteur : list[float], a_considerer
     for nom in a_considerer :
         groupes.setdefault(type_du_modele.get(nom), []).append(nom)
     if len(groupes) <= 1 :
-        return rechercher_chunks(session, vecteur, NB_EXTRAITS, modeles=a_considerer or None, categories=categories)
+        return _plus_proches(session, vecteur, NB_EXTRAITS, a_considerer or None, categories)
     par_groupe = max(2, -(-NB_EXTRAITS // len(groupes)))       # arrondi au supérieur
-    return [paire for noms in groupes.values()
-            for paire in rechercher_chunks(session, vecteur, par_groupe, modeles=noms, categories=categories)]
+    return [paire for noms in groupes.values() for paire in _plus_proches(session, vecteur, par_groupe, noms, categories)]
 
 
 def texte_de_recherche(question : str, questions_precedentes : list[str]) -> str :

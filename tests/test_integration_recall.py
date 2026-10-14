@@ -3,11 +3,11 @@ ne doit pas régresser. mesure détaillée : python -m backend.evaluation.recall
 import pytest
 
 from backend.evaluation.metriques import synthetiser
-from backend.evaluation.recall import mesurer
+from backend.evaluation.recall import charger_questions, evaluer_question, mesurer
 
 pytestmark = pytest.mark.integration
 
-RAPPEL_MIN = 0.95           # mesuré : 0,96 (octobre 2026)
+RAPPEL_MIN = 0.95           # mesuré : 1,00 (octobre 2026)
 PRECISION_MIN = 0.80        # mesuré : 0,90
 
 
@@ -32,3 +32,8 @@ def test_precision_du_jeu_de_reference(resultats) :
 def test_toutes_les_fiches_exactes(resultats) :
     assert all(not resultat.fiches_manquantes for resultat in resultats)
 
+
+def test_doublons_ne_prennent_plus_toutes_les_places(session_bd) :
+    """non-régression : le paragraphe sur les vibrations, identique dans les 6 manuels WX, évinçait la procédure"""
+    element = next(element for element in charger_questions() if "vibre" in element["question"])
+    assert evaluer_question(session_bd, element).rappel == 1.0
