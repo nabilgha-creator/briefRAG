@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from sqlalchemy.orm import Session, selectinload
 from backend.database.models import Document, Chunk, Modele , Erreur
-from sqlalchemy import select, or_
+from sqlalchemy import Select, func, or_, select
 import logging
 
 logger = logging.getLogger(__name__)
@@ -159,11 +159,43 @@ def rechercher_chunks(session : Session, vecteur : list[float], limite : int = 5
       None = toutes, liste vide = aucune"""
     distance = Chunk.vecteur.cosine_distance(vecteur).label("distance")
     stmt = select(Chunk, distance).where(Chunk.vecteur.is_not(None)).options(selectinload(Chunk.rel_document))
+    stmt = _filtrer(stmt, modeles, ids_erreurs, categories).order_by(distance).limit(limite)
+    return list(session.execute(stmt).tuples())
+
+
+def _filtrer(stmt : Select, modeles : list[str] | None, ids_erreurs : list[int] | None, categories : list[str] | None) -> Select :
+    """filtres communs aux recherches par vecteurs et lexicale (modèles, erreurs, droits) : les deux recherches
+    appliquent exactement les mêmes règles, et les droits ne sont écrits qu'une fois"""
     if modeles :
         stmt = stmt.where(or_(Chunk.rel_chunk_modele.any(Modele.modele.in_(modeles)), ~Chunk.rel_chunk_modele.any()))
     if ids_erreurs :
         stmt = stmt.where(Chunk.rel_chunk_erreur.any(Erreur.id_erreur.in_(ids_erreurs)))
     if categories is not None :
         stmt = stmt.where(Chunk.rel_document.has(Document.categorie.in_(categories)))
-    stmt = stmt.order_by(distance).limit(limite)
+    return stmt
+
+
+def ids_chunks_filtres(session : Session, modeles : list[str] | None = None, categories : list[str] | None = None) -> set[int] :
+    """identifiants des chunks qui passent les filtres (mêmes règles que rechercher_chunks)"""
+    return set(session.scalars(_filtrer(select(Chunk.id_chunk), modeles, None, categories)))
+
+
+def chunks_avec_distance(session : Session, vecteur : list[float], ids_chunks : list[int]) -> list[tuple[Chunk, float]] :
+    """ces chunks avec leur distance cosinus a la question (ceux trouvés par la recherche lexicale seule)"""
+    if not ids_chunks :
+        return []
+    distance = Chunk.vecteur.cosine_distance(vecteur).label("distance")
+    stmt = select(Chunk, distance).where(Chunk.id_chunk.in_(ids_chunks), Chunk.vecteur.is_not(None)).options(selectinload(Chunk.rel_document))
     return list(session.execute(stmt).tuples())
+
+
+def textes_des_chunks(session : Session) -> list[tuple[int, str, str]] :
+    """(id_chunk, contenu, source du document) de tous les chunks : de quoi construire l'index lexical"""
+    stmt = select(Chunk.id_chunk, Chunk.contenu, Document.source).join(Chunk.rel_document)
+    return list(session.execute(stmt).tuples())
+
+
+def version_des_chunks(session : Session) -> tuple[int, int] :
+    """(nombre de chunks, plus grand identifiant) : change a chaque ingestion (les chunks sont recréés)"""
+    nombre, plus_grand = session.execute(select(func.count(Chunk.id_chunk), func.coalesce(func.max(Chunk.id_chunk), 0))).one()
+    return nombre, plus_grand

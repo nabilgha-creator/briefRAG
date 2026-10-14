@@ -1,19 +1,22 @@
 """recherche du contexte d'une question, sans LLM :
 1. analyse : modèle (ou a défaut type d'appareil) et codes erreur, dans la question ou plus tôt dans la conversation
 2. fiches erreur exactes, lues dans la table erreur (fiables, pas d'approximation)
-3. extraits de documentation proches de la question (recherche par vecteurs), filtrés sur les modèles concernés,
-   plus les extraits liés aux erreurs citées (un bulletin technique sur E52 remonte toujours pour une question sur E52)
+3. extraits de documentation proches de la question, filtrés sur les modèles concernés : recherche par vecteurs (le sens)
+   et recherche lexicale (les termes exacts, cf. recherche_lexicale.py) mises en concurrence, plus les extraits liés aux
+   erreurs citées (un bulletin technique sur E52 remonte toujours pour une question sur E52)
 """
 import logging
 import re
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
 
 from backend.config import CATEGORIE_REFERENTIEL
-from backend.database.crud import get_document_par_categorie, lister_erreurs, lister_modeles, rechercher_chunks
+from backend.database.crud import chunks_avec_distance, get_document_par_categorie, lister_erreurs, lister_modeles, rechercher_chunks
 from backend.database.models import Chunk, Erreur, Modele
 from backend.rag.embeddings import vectoriser_question
+from backend.rag.recherche_lexicale import rechercher_lexical
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +26,8 @@ NB_EXTRAITS_LIES_AUX_ERREURS = 3                         # extraits liés aux er
 SEUIL_DISTANCE = 0.55                                    # au-delà, un extrait est jugé hors sujet (distance cosinus ;
                                                          # calibré : pertinents 0.28-0.52, hors sujet 0.68 et plus)
 CANDIDATS_PAR_EXTRAIT = 4                                # candidats demandés par extrait gardé, avant dédoublonnage
+RECHERCHE_LEXICALE = True                                # recherche lexicale (BM25) en concurrence avec les vecteurs
+RRF_K = 60                                               # fusion des classements : 1 / (RRF_K + rang) par recherche
 MOTS_QUESTION_COURTE = 8                                 # en dessous, la question précédente est ajoutée a la recherche
 
 
@@ -173,14 +178,45 @@ def _sans_doublons(proches : list[tuple[Chunk, float]], limite : int) -> list[tu
     return gardes
 
 
-def _plus_proches(session : Session, vecteur : list[float], limite : int, modeles : list[str] | None,
+def _fusionner(vectoriels : list[tuple[Chunk, float]], lexicaux : list) -> list[int] :
+    """fusion des deux classements (reciprocal rank fusion) : chaque recherche donne 1 / (RRF_K + rang) a ses chunks,
+    les points s'additionnent. les scores bruts (distance cosinus, score BM25) ne sont pas comparables entre eux ;
+    les rangs le sont. un chunk bien classé par les deux recherches passe devant un chunk classé par une seule"""
+    points : dict[int, float] = defaultdict(float)
+    for rang, (chunk, _) in enumerate(vectoriels, 1) :
+        points[chunk.id_chunk] += 1 / (RRF_K + rang)
+    for rang, resultat in enumerate(lexicaux, 1) :
+        points[resultat.id_chunk] += 1 / (RRF_K + rang)
+    return sorted(points, key=points.get, reverse=True)
+
+
+def _plus_proches(session : Session, vecteur : list[float], texte : str, limite : int, modeles : list[str] | None,
                   categories : list[str] | None) -> list[tuple[Chunk, float]] :
-    """le même paragraphe revient dans les manuels de plusieurs modèles : on demande plus de candidats que nécessaire
-    et on retire les doublons AVANT de garder les `limite` meilleurs (sinon les copies prennent toutes les places)"""
-    return _sans_doublons(rechercher_chunks(session, vecteur, limite * CANDIDATS_PAR_EXTRAIT, modeles=modeles, categories=categories), limite)
+    """les `limite` meilleurs extraits pertinents, sans doublons.
+    - pertinent : sous le seuil de distance, ou (recherche lexicale) contenant une référence citée dans la question
+    - le même paragraphe revient dans les manuels de plusieurs modèles : on demande plus de candidats que nécessaire
+      et on retire les doublons AVANT de garder les meilleurs (sinon les copies prennent toutes les places)"""
+    nombre = limite * CANDIDATS_PAR_EXTRAIT
+    vectoriels = rechercher_chunks(session, vecteur, nombre, modeles=modeles, categories=categories)
+    if not RECHERCHE_LEXICALE :
+        return _sans_doublons([(chunk, distance) for chunk, distance in vectoriels if distance <= SEUIL_DISTANCE], limite)
+
+    lexicaux = rechercher_lexical(session, texte, nombre, modeles, categories)
+    avec_distance = {chunk.id_chunk : (chunk, distance) for chunk, distance in vectoriels}
+    trouves_seulement_par_les_termes = [resultat.id_chunk for resultat in lexicaux if resultat.id_chunk not in avec_distance]
+    avec_distance |= {chunk.id_chunk : (chunk, distance) for chunk, distance in chunks_avec_distance(session, vecteur, trouves_seulement_par_les_termes)}
+    references = {resultat.id_chunk for resultat in lexicaux if resultat.references}
+
+    pertinents = [avec_distance[id_chunk] for id_chunk in _fusionner(vectoriels, lexicaux)
+                  if id_chunk in avec_distance and (avec_distance[id_chunk][1] <= SEUIL_DISTANCE or id_chunk in references)]
+    retenus = _sans_doublons(pertinents, limite)
+    apportes = [chunk.id_chunk for chunk, _ in retenus if chunk.id_chunk in trouves_seulement_par_les_termes]
+    logger.debug("fusion : %d candidats par vecteurs, %d par termes, %d retenus dont %d apportés par la recherche lexicale",
+                 len(vectoriels), len(lexicaux), len(retenus), len(apportes))
+    return retenus
 
 
-def _rechercher_equilibre(session : Session, vecteur : list[float], a_considerer : list[str], modeles : list[Modele],
+def _rechercher_equilibre(session : Session, vecteur : list[float], texte : str, a_considerer : list[str], modeles : list[Modele],
                           categories : list[str] | None) -> list[tuple[Chunk, float]] :
     """extraits les plus proches. si la question couvre plusieurs types d'appareils ("lave-linge et fours"),
     chaque type a son propre lot : sinon le type dont les textes ressemblent le plus a la question prend toute la place"""
@@ -189,9 +225,9 @@ def _rechercher_equilibre(session : Session, vecteur : list[float], a_considerer
     for nom in a_considerer :
         groupes.setdefault(type_du_modele.get(nom), []).append(nom)
     if len(groupes) <= 1 :
-        return _plus_proches(session, vecteur, NB_EXTRAITS, a_considerer or None, categories)
+        return _plus_proches(session, vecteur, texte, NB_EXTRAITS, a_considerer or None, categories)
     par_groupe = max(2, -(-NB_EXTRAITS // len(groupes)))       # arrondi au supérieur
-    return [paire for noms in groupes.values() for paire in _plus_proches(session, vecteur, par_groupe, noms, categories)]
+    return [paire for noms in groupes.values() for paire in _plus_proches(session, vecteur, texte, par_groupe, noms, categories)]
 
 
 def texte_de_recherche(question : str, questions_precedentes : list[str]) -> str :
@@ -223,19 +259,20 @@ def rechercher_contexte(session : Session, question : str, questions_precedentes
             fiches.extend(_fiches(erreurs, code, premier_numero=len(fiches) + 1))
             ids_erreurs.extend(erreur.id_erreur for erreur in erreurs)
 
-    vecteur = vectoriser_question(texte_de_recherche(question, questions_precedentes))
+    texte = texte_de_recherche(question, questions_precedentes)
+    vecteur = vectoriser_question(texte)
     filtre = appareils.modeles or None
-    proches = _rechercher_equilibre(session, vecteur, appareils.modeles, modeles, categories)
+    proches = _rechercher_equilibre(session, vecteur, texte, appareils.modeles, modeles, categories)
     lies = (rechercher_chunks(session, vecteur, NB_EXTRAITS_LIES_AUX_ERREURS, modeles=filtre, ids_erreurs=ids_erreurs, categories=categories)
             if ids_erreurs else [])
 
-    # les extraits liés aux erreurs sont pertinents par construction ; les autres doivent passer le seuil.
+    # les extraits liés aux erreurs sont pertinents par construction ; les autres ont passé le seuil (cf. _plus_proches).
     # écartés pour économiser des tokens : un extrait qui répète une fiche erreur déjà fournie (ligne du référentiel),
     # et un texte identique a un extrait déjà retenu (même paragraphe dans les manuels de plusieurs modèles)
     deja_fournis = [f"{fiche.code} — {fiche.signification}" for fiche in fiches]
     retenus : dict[int, tuple[Chunk, float]] = {}
     textes_vus : set[str] = set()
-    candidats = lies + [(chunk, distance) for chunk, distance in proches if distance <= SEUIL_DISTANCE]
+    candidats = lies + proches
     for chunk, distance in sorted(candidats, key=lambda paire : paire[1]) :
         texte_sans_titre = chunk.contenu.split("\n", 1)[-1]
         if chunk.id_chunk in retenus or texte_sans_titre in textes_vus or any(ligne in chunk.contenu for ligne in deja_fournis) :

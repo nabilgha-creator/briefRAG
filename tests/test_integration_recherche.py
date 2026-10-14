@@ -57,3 +57,14 @@ def test_droits_role_limite_a_la_faq(session_bd) :
 def test_aucun_droit_aucune_source(session_bd) :
     contexte = rechercher_contexte(session_bd, "Mon WX-500 affiche E52, que faire ?", [], categories=[])
     assert contexte.extraits == [] and contexte.fiches == []
+
+
+def test_reference_de_piece_trouvee_par_les_termes(session_bd) :
+    """les vecteurs seuls écartaient ces documents (distance 0,59 > seuil) : la référence exacte les ramène"""
+    contexte = rechercher_contexte(session_bd, "À quoi correspond la pièce 44-3311 ?", [])
+    assert {"Bulletins_techniques/BT-2026-007.docx", "Referentiel_codes_erreur.xlsx"} & _sources(contexte)
+
+
+def test_recherche_lexicale_respecte_les_droits(session_bd) :
+    contexte = rechercher_contexte(session_bd, "Le technicien doit-il contrôler le relais K2 ?", [], categories=["FAQ"])
+    assert all(source.startswith("FAQ/") for source in _sources(contexte))
