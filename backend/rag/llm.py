@@ -1,13 +1,5 @@
-"""appel du LLM via OpenRouter (API compatible OpenAI), avec httpx : pas de SDK supplémentaire.
-ne dépend ni de la base de données ni du reste du projet.
-
-réglages dans le .env :
-- CLE_OPENR : clé API OpenRouter (obligatoire)
-- MODELE_LLM : modèle OpenRouter (défaut anthropic/claude-haiku-5.5 : 0,10 $ / 0,50 $ par million de tokens entrée / sortie)
-- EFFORT_LLM : effort de réflexion du modèle avant de répondre : low, medium ou high (défaut low)
-- TEMPERATURE_LLM : facultatif, seulement pour un modèle qui l'accepte. Claude Haiku 5.5 refuse toute température autre
-  que celle par défaut (erreur 400) : c'est sa réflexion qui stabilise les réponses, guidées par le prompt système
-"""
+"""LLM via OpenRouter (httpx, sans SDK). .env : CLE_OPENR, MODELE_LLM (défaut Claude Haiku 5.5),
+EFFORT_LLM (défaut low), TEMPERATURE_LLM (facultatif : Haiku 5.5 la refuse)"""
 import json
 import logging
 import os

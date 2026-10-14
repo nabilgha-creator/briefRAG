@@ -1,7 +1,4 @@
-/**
- * accès HTTP a l'API FastAPI : en-tête d'authentification, erreurs, flux server-sent events.
- * VITE_API_URL : adresse de l'API (défaut /api, redirigé par Vite en développement)
- */
+// accès HTTP a l'API : jeton, erreurs, flux SSE. VITE_API_URL : adresse de l'API (défaut /api, proxy Vite)
 import { useSessionStore } from '@/stores/session'
 
 const BASE = import.meta.env.VITE_API_URL ?? '/api'
@@ -66,7 +63,7 @@ async function recuperer(chemin) {
   return verifier(reponse)
 }
 
-/** fichier binaire (pdf du lecteur) : un lien ou un iframe ne peuvent pas envoyer l'en-tête d'authentification */
+/** fichier binaire (pdf du lecteur) : un lien ou un iframe ne peut pas envoyer l'en-tête d'authentification */
 export async function binaire(chemin) {
   return (await recuperer(chemin)).arrayBuffer()
 }
@@ -81,11 +78,7 @@ export async function telecharger(chemin, nomFichier) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-/**
- * requête dont la réponse arrive en server-sent events ("event: nom" + "data: {json}").
- * EventSource ne permet ni POST ni en-tête d'authentification : on lit le flux avec fetch.
- * gestionnaires : { morceau(donnees), fin(donnees), erreur(donnees) }, appelés selon le nom de l'événement
- */
+/** réponse en SSE, lue avec fetch (EventSource ne fait ni POST ni en-tête d'authentification) ; gestionnaires { morceau, fin, erreur } */
 export async function flux(chemin, corps, gestionnaires, signal) {
   let reponse
   try {

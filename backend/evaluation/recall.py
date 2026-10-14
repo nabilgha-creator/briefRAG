@@ -1,18 +1,5 @@
-"""mesure du rappel de la recherche du RAG sur un jeu de questions de référence (questions_recall.json).
-
-pour chaque question, la vraie recherche du chatbot est lancée (rechercher_contexte), puis les documents des extraits
-envoyés au LLM sont comparés aux documents attendus (cf. metriques.py). aucun appel au LLM : gratuit et rapide.
-pour chaque document attendu mais absent, le rapport dit pourquoi : écarté par le seuil de distance, classé trop
-loin, écarté au dédoublonnage, ou exclu par le filtre des modèles.
-
-lancement depuis la racine du projet :
-    python -m backend.evaluation.recall                             réglages actuels
-    python -m backend.evaluation.recall --seuil 0.6 --extraits 6    autres réglages, sans modifier le code
-    python -m backend.evaluation.recall --sans-lexicale             recherche par vecteurs seule (pour comparer)
-les résultats sont enregistrés en csv dans assets/evaluation/ (séparateur « ; », virgule décimale : s'ouvre dans Excel) :
-- recall_<date>.csv : le détail, une ligne par question
-- historique_recall.csv : une ligne par mesure (réglages et synthèse), pour suivre l'évolution
-"""
+"""rappel de la recherche sur questions_recall.json, sans LLM ; chaque document manquant est expliqué.
+python -m backend.evaluation.recall [--seuil 0.6] [--extraits 6] [--sans-lexicale] ; résultats csv dans assets/evaluation/"""
 import argparse
 import csv
 import json

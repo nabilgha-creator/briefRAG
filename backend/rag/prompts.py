@@ -1,10 +1,5 @@
-"""textes envoyés au LLM. séparés du code pour pouvoir les ajuster sans toucher a la logique.
-
-économie de tokens :
-- prompt système court ; le contexte documentaire n'accompagne QUE la question en cours
-- l'historique renvoyé au LLM ne contient que les questions / réponses, jamais les extraits des tours précédents
-- extraits compacts : un en-tête court (numéro + source + pages) puis le texte du chunk
-"""
+"""textes envoyés au LLM. économie de tokens : les extraits accompagnent seulement la question en cours,
+jamais l'historique"""
 from backend.rag.recherche import Contexte, Extrait, FicheErreur
 
 PROMPT_SYSTEME = """Tu es l'assistant interne des conseillers du service après-vente Electrodomus (lave-linge WX, lave-vaisselle LV, fours FR).

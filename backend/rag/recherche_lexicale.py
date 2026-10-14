@@ -1,19 +1,5 @@
-"""recherche lexicale : score BM25 des chunks pour les termes de la question, en concurrence avec la recherche par vecteurs.
-
-les vecteurs comprennent le sens mais restent approximatifs sur les termes exacts : une référence de pièce (44-3311),
-un numéro de bulletin (BT-2026-011), un mot rare (relais K2). la recherche lexicale compte les termes que la question
-et le chunk ont en commun, avec la formule BM25 :
-- rareté (IDF) : un terme rare dans la documentation pèse lourd, un terme présent partout ("lave-linge") presque rien
-- saturation (K1) : répéter un terme dans un chunk aide, mais de moins en moins
-- longueur (B) : un chunk long n'est pas avantagé juste parce qu'il contient plus de mots
-
-motifs reconnus (comme dans recherche.py pour les modèles et les codes) : une référence trouvée dans la question
-(code erreur, pièce, bulletin, procédure) compte double, et suffit a rendre un chunk pertinent même au-delà du seuil
-de distance des vecteurs.
-
-l'index (quelques centaines de chunks) est construit en mémoire a la première recherche, puis reconstruit
-automatiquement quand les chunks en base changent (nouvelle ingestion).
-"""
+"""recherche lexicale BM25, en concurrence avec les vecteurs (termes exacts : pièces, bulletins, mots rares).
+une référence citée compte double ; index en mémoire, reconstruit quand les chunks changent"""
 import logging
 import math
 import re

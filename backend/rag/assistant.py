@@ -1,11 +1,5 @@
-"""assistant RAG : question + historique -> recherche du contexte -> prompt -> LLM -> réponse et sources citées.
-
-deux étapes séparées pour permettre le streaming :
-1. preparer() : recherche et construction du prompt (ou réponse directe sans LLM quand il faut demander le modèle)
-2. enregistrer_echange() : une fois la réponse obtenue, question et réponse sont enregistrées ensemble
-   (si le LLM échoue, rien n'est enregistré : pas de question orpheline dans l'historique)
-ne connaît ni HTTP ni l'interface : utilisé par l'API (backend/api) et par le mode terminal (backend/rag/terminal.py).
-"""
+"""assistant RAG en deux temps (pour le streaming) : preparer() (recherche + prompt, ou réponse sans LLM),
+puis enregistrer_echange() (question et réponse ensemble : rien si le LLM échoue)"""
 import logging
 import re
 from dataclasses import asdict, dataclass

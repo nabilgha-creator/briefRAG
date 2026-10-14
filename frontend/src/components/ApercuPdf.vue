@@ -1,10 +1,6 @@
 <script setup>
-/**
- * pdf affiché avec pdf.js : chaque page est dessinée dans un canvas, avec par-dessus la couche de texte de pdf.js
- * (des spans transparents placés sur le texte) qui sert au surlignage du passage et à la sélection du texte.
- * le passage est d'abord cherché dans le texte des pages (sans rien dessiner), puis seules ses pages sont dessinées ;
- * les autres le sont quand elles approchent de l'écran.
- */
+// pdf.js : canvas + couche de texte (spans transparents, servent au surlignage). passage cherché dans le texte
+// avant tout dessin ; ses pages d'abord, les autres a l'approche de l'écran
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { GlobalWorkerOptions, TextLayer, getDocument } from 'pdfjs-dist'
 import urlTravailleur from 'pdfjs-dist/build/pdf.worker.min.mjs?url'

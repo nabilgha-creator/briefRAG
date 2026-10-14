@@ -1,13 +1,6 @@
-/**
- * retrouve un passage (le texte d'un chunk) parmi les blocs d'un document affiché : lignes de texte d'un pdf,
- * paragraphes, éléments de liste ou cellules d'un aperçu HTML.
- *
- * le texte du chunk n'est pas identique au document : tableaux réécrits une ligne par ligne
- * ("E01, Signification = Porte mal verrouillée"), espaces normalisés, titres de section ajoutés en tête.
- * on cherche donc les blocs dont le texte est CONTENU dans le passage, puis on garde la suite de blocs la plus
- * fournie : une correspondance isolée ailleurs dans le document ("Codes erreur" dans un sommaire) est ignorée.
- */
-const RE_PRIVES = /[-]/g      // puces des polices Symbol des pdf, retirées aussi du texte des chunks
+// retrouve le texte d'un chunk dans les blocs affichés (lignes de pdf, paragraphes, cellules) : blocs contenus
+// dans le passage, puis la suite de blocs la plus fournie (le chunk n'est pas identique au document)
+const RE_PRIVES = /[\uE000-\uF8FF]/g      // puces des polices Symbol des pdf, retirées aussi du texte des chunks
 const RE_CODE = /^[a-z]\d{2}$/            // code erreur seul dans une cellule : "e23"
 const LONGUEUR_MIN = 4                    // en dessous, un bloc ("le", "de") se retrouverait partout
 const TROU_MAX = 2                        // blocs non retrouvés tolérés au milieu du passage (mot coupé en fin de ligne...)
@@ -30,10 +23,7 @@ function correspond(bloc, passage, debut) {
   return debut.length >= 30 && bloc.includes(debut)      // passage plus court que le bloc (simple début d'extrait)
 }
 
-/**
- * textes : le texte de chaque bloc, dans l'ordre du document.
- * renvoie les indices des blocs du passage, du premier au dernier (vide si le passage est introuvable)
- */
+/** indices des blocs du passage (vide si introuvable) ; textes = blocs dans l'ordre du document */
 export function localiserPassage(textes, passage) {
   const cible = normaliser(passage).replace(/…$/, '').trim()      // "…" : début d'extrait tronqué (repli)
   if (!cible) return []

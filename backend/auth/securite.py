@@ -1,10 +1,5 @@
-"""mots de passe et jetons de session, avec la bibliothèque standard uniquement.
-
-- mot de passe : empreinte scrypt avec sel aléatoire, format "scrypt$n$r$p$sel$empreinte" (paramètres stockés avec
-  l'empreinte : on peut les durcir plus tard sans invalider les comptes existants)
-- jeton : chaîne aléatoire remise au navigateur ; la base n'en garde que l'empreinte sha256 (une fuite de la base
-  ne donne pas de jeton utilisable)
-"""
+"""mots de passe (scrypt + sel, paramètres gardés dans l'empreinte) et jetons (seule leur empreinte sha256
+est stockée), avec la bibliothèque standard"""
 import base64
 import hashlib
 import hmac

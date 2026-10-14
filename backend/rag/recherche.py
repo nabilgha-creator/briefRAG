@@ -1,10 +1,5 @@
-"""recherche du contexte d'une question, sans LLM :
-1. analyse : modèle (ou a défaut type d'appareil) et codes erreur, dans la question ou plus tôt dans la conversation
-2. fiches erreur exactes, lues dans la table erreur (fiables, pas d'approximation)
-3. extraits de documentation proches de la question, filtrés sur les modèles concernés : recherche par vecteurs (le sens)
-   et recherche lexicale (les termes exacts, cf. recherche_lexicale.py) mises en concurrence, plus les extraits liés aux
-   erreurs citées (un bulletin technique sur E52 remonte toujours pour une question sur E52)
-"""
+"""contexte d'une question, sans LLM : appareils et codes erreur, fiches exactes, extraits (vecteurs + BM25,
+filtrés par modèles et droits) et extraits liés aux codes cités"""
 import logging
 import re
 from collections import defaultdict
@@ -121,9 +116,8 @@ def _motif_type(type_appareil : str) -> re.Pattern[str] :
 
 
 def analyser_appareils(textes : list[str], modeles : list[Modele]) -> Appareils :
-    """textes du plus récent au plus ancien (la question puis les messages précédents) : le premier qui cite
-    un appareil l'emporte, avec TOUS les modèles et types qu'il cite ("lave-linge et fours" -> les deux gammes).
-    un type n'est étendu a toute sa gamme que si aucun modèle de ce type n'est cité ("mon lave-linge WX-500" -> WX-500)"""
+    """textes du plus récent au plus ancien ; le premier qui cite un appareil l'emporte, avec tous ses modèles
+    et types. un type n'est étendu a sa gamme que si aucun de ses modèles n'est cité"""
     types = sorted({modele.type for modele in modeles if modele.type})
     for texte in textes :
         cites = [modele for modele in modeles if _motif_modele(modele.modele).search(texte)]
@@ -179,9 +173,7 @@ def _sans_doublons(proches : list[tuple[Chunk, float]], limite : int) -> list[tu
 
 
 def _fusionner(vectoriels : list[tuple[Chunk, float]], lexicaux : list) -> list[int] :
-    """fusion des deux classements (reciprocal rank fusion) : chaque recherche donne 1 / (RRF_K + rang) a ses chunks,
-    les points s'additionnent. les scores bruts (distance cosinus, score BM25) ne sont pas comparables entre eux ;
-    les rangs le sont. un chunk bien classé par les deux recherches passe devant un chunk classé par une seule"""
+    """reciprocal rank fusion : 1 / (RRF_K + rang) par recherche, additionnés (les scores bruts ne sont pas comparables)"""
     points : dict[int, float] = defaultdict(float)
     for rang, (chunk, _) in enumerate(vectoriels, 1) :
         points[chunk.id_chunk] += 1 / (RRF_K + rang)
@@ -192,10 +184,7 @@ def _fusionner(vectoriels : list[tuple[Chunk, float]], lexicaux : list) -> list[
 
 def _plus_proches(session : Session, vecteur : list[float], texte : str, limite : int, modeles : list[str] | None,
                   categories : list[str] | None) -> list[tuple[Chunk, float]] :
-    """les `limite` meilleurs extraits pertinents, sans doublons.
-    - pertinent : sous le seuil de distance, ou (recherche lexicale) contenant une référence citée dans la question
-    - le même paragraphe revient dans les manuels de plusieurs modèles : on demande plus de candidats que nécessaire
-      et on retire les doublons AVANT de garder les meilleurs (sinon les copies prennent toutes les places)"""
+    """meilleurs extraits pertinents (sous le seuil, ou référence citée trouvée par BM25), doublons retirés avant la coupe"""
     nombre = limite * CANDIDATS_PAR_EXTRAIT
     vectoriels = rechercher_chunks(session, vecteur, nombre, modeles=modeles, categories=categories)
     if not RECHERCHE_LEXICALE :
@@ -239,9 +228,7 @@ def texte_de_recherche(question : str, questions_precedentes : list[str]) -> str
 
 def rechercher_contexte(session : Session, question : str, questions_precedentes : list[str],
                         categories : list[str] | None = None) -> Contexte :
-    """questions_precedentes : les messages précédents de l'utilisateur, du plus ancien au plus récent.
-    categories : catégories de documents que l'utilisateur peut consulter (None = toutes) ; les fiches erreur
-    exactes suivent la catégorie du référentiel des codes erreur"""
+    """questions_precedentes : de la plus ancienne a la plus récente ; categories : droits (None = toutes)"""
     plus_recentes_d_abord = [question] + questions_precedentes[::-1]
     modeles = lister_modeles(session)
     appareils = analyser_appareils(plus_recentes_d_abord, modeles)

@@ -1,10 +1,5 @@
-"""fixtures communes aux tests.
-
-- tests unitaires : aucune dépendance (ni base, ni réseau, ni LLM)
-- tests marqués "integration" : utilisent la base PostgreSQL du .env. leurs comptes et rôles commencent par
-  "test_" / "Test " et sont supprimés avant et après chaque test. ils sont sautés si la base est injoignable.
-  le LLM n'est jamais appelé : la fixture faux_llm le remplace par une réponse fixe (aucun coût)
-"""
+"""fixtures. tests "integration" : base du .env (sautés si injoignable), comptes test_ et rôles "Test " nettoyés,
+LLM remplacé par faux_llm (aucun appel)"""
 import pytest
 from sqlalchemy import delete, text
 

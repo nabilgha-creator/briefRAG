@@ -62,10 +62,7 @@ export function typeSource(source) {
   return source.endsWith('.xlsx') ? 'RÉFÉRENTIEL' : 'DOCUMENT'
 }
 
-/**
- * fichier qu'ouvre le lecteur pour une source : celui indiqué par l'API, ou a défaut (sources des conversations
- * antérieures au lecteur) la source elle-même ; null pour une fiche erreur ancienne (aucun fichier connu)
- */
+/** fichier ouvert par le lecteur ; sources anciennes : la source elle-même, null pour une fiche erreur */
 export function fichierDeSource(source) {
   return source.document ?? (source.source !== 'table erreur' ? source.source : null)
 }

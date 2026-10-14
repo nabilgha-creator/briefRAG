@@ -117,6 +117,6 @@ def test_referentiel_lu_onglet_par_onglet(tmp_path) :
 
 def test_nettoyage_des_marques_et_caracteres_parasites() :
     assert _nettoyer("**Important** et *note*") == "Important et note"
-    assert _nettoyer("-  Branchez l'appareil") == "- Branchez l'appareil"          # puce de police Symbol (pdf)
+    assert _nettoyer("- \uf0b7 Branchez l'appareil") == "- Branchez l'appareil"          # puce de police Symbol (pdf)
     assert _nettoyer("relancer le programme.. E10") == "relancer le programme. E10"     # point de cellule + point ajouté
     assert _nettoyer("ligne   avec    espaces\n\n\nsuite") == "ligne avec espaces\nsuite"

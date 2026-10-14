@@ -1,9 +1,5 @@
 <script setup>
-/**
- * réponse de l'assistant.
- * pendant le streaming : les paragraphes terminés sont mis en forme (markdown), le paragraphe en cours
- * s'affiche mot a mot, chaque mot en fondu. a la fin : toute la réponse en markdown, citations cliquables.
- */
+// streaming : paragraphes terminés en markdown, paragraphe en cours mot a mot en fondu ; a la fin tout en markdown
 import { computed } from 'vue'
 
 import EtapesRecherche from './EtapesRecherche.vue'

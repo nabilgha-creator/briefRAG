@@ -1,8 +1,4 @@
-"""configuration du découpage : tokenizer du modèle d'embedding et chunker Docling.
-
-les objets sont créés a la premiere utilisation (et une seule fois) plutôt qu'a l'import :
-importer ce module ne télécharge / ne charge rien.
-"""
+"""découpage : tokenizer de bge-m3 et chunker Docling, créés a la première utilisation (lru_cache), pas a l'import"""
 from functools import lru_cache
 from typing import Any
 
@@ -36,9 +32,8 @@ def compter_tokens(texte : str) -> int :
 ## SÉRIALISATION DES TABLEAUX ##
 
 class SerialiseurTableauParLigne(TripletTableSerializer) :
-    """même format que Docling ("E01, Signification = Porte mal verrouillée") mais une ligne de texte par ligne
-    du tableau. Docling écrit tout le tableau sur une seule ligne : un grand tableau est alors coupé au milieu
-    d'une ligne. ici le chunker découpe ligne par ligne, et chaque ligne reste lisible seule (elle porte ses colonnes)"""
+    """une ligne de texte par ligne de tableau ("E01, Signification = ...") : le chunker coupe
+    entre deux lignes, jamais au milieu, et chaque ligne reste lisible seule"""
 
     def serialize(self, *, item : TableItem, doc_serializer : BaseDocSerializer, doc : DoclingDocument, **kwargs : Any) -> SerializationResult :
         tableau = item.export_to_dataframe(doc=doc)
@@ -75,8 +70,6 @@ class FournisseurSerialiseur(ChunkingSerializerProvider) :
 
 @lru_cache
 def creer_chunker() -> HybridChunker :
-    """chunker des documents structurés (pdf, docx) : suit les sections, fusionne les petits morceaux voisins
-    de la même section, et découpe les grands tableaux entre deux lignes.
-    (le référentiel excel n'en a pas besoin : data.py en fait un chunk par code erreur)"""
+    """suit les sections, fusionne les petits voisins, coupe les grands tableaux entre deux lignes"""
     tokenizer = HuggingFaceTokenizer(tokenizer=_tokenizer_hf(), max_tokens=MAX_TOKENS_CHUNK - TOKENS_RESERVES_CONTEXTE)
     return HybridChunker(tokenizer=tokenizer, merge_peers=True, repeat_table_header=True, serializer_provider=FournisseurSerialiseur())

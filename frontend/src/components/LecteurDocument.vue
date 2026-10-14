@@ -1,11 +1,6 @@
 <script setup>
-/**
- * lecteur de document : ouvre le fichier d'une source et surligne le passage cité.
- * - pdf : affiché tel quel (pdf.js), au passage ;
- * - docx, xlsx, html : aperçu HTML fourni par l'API ; une fiche erreur ouvre le référentiel a la ligne du code.
- * le passage est le texte complet du chunk (GET /documents/passages/{id}) ; a défaut (ancienne conversation,
- * document réingéré depuis), le début d'extrait affiché dans le panneau des sources.
- */
+// lecteur : pdf (pdf.js) ou aperçu HTML, au passage cité surligné. passage = texte complet du chunk,
+// a défaut (chunk réingéré, ancienne conversation) le début d'extrait
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 
 import ApercuHtml from './ApercuHtml.vue'

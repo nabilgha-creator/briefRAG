@@ -1,12 +1,5 @@
-"""lecture des documents structurés (pdf, docx, html générique) avec Docling.
-
-étapes : conversion (avec cache) -> réparation du document -> découpage en chunks.
-les réparations corrigent ce que la conversion abîme :
-- titre du document isolé de la couverture (il sera remis en contexte de chaque chunk par data.py)
-- niveaux des titres numérotés (les pdf arrivent a plat : "2.3" devient un sous-titre de "2.")
-- tableaux coupés par un saut de page recollés (sinon une ligne coupée devient l'en-tête des colonnes)
-- bruit retiré (sommaire, mentions de rédaction)
-"""
+"""pdf / docx avec Docling : conversion (en cache), réparations (couverture, niveaux de titres, tableaux coupés
+par un saut de page, sommaire), puis découpage"""
 import hashlib
 import logging
 import re
@@ -32,7 +25,7 @@ LIGNES_GENERIQUES = {"", "documentation interne"}
 NB_ITEMS_ENTETE = 8                                                  # items du début gardés pour chercher la version
 RE_GRAS = re.compile(r"\*\*(.+?)\*\*", re.DOTALL)
 RE_ITALIQUE = re.compile(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", re.DOTALL)
-RE_CARACTERES_PRIVES = re.compile(r"[-]")                 # puces des polices Symbol des pdf (U+F0B7...)
+RE_CARACTERES_PRIVES = re.compile(r"[\ue000-\uf8ff]")                 # puces des polices Symbol des pdf (U+F0B7...)
 RE_DOUBLE_POINT = re.compile(r"(?<!\.)\.\.(?!\.)")                   # "texte.." : point de la cellule + point ajouté par la sérialisation des tableaux
 
 
@@ -88,10 +81,8 @@ def _sans_marque(texte : str) -> str :
 
 
 def _extraire_couverture(document : DoclingDocument) -> tuple[str | None, str] :
-    """renvoie (titre, entete) et masque le bloc de couverture.
-    - pdf : les titres empilés en haut de la page 1 (hors marque seule), sauf le dernier qui porte le texte qui suit
-      (exception : s'il n'y en a qu'un, c'est le titre du document)
-    - docx : les paragraphes avant le premier titre de section ; le titre = les lignes en gras"""
+    """(titre, entete) ; masque la couverture. pdf : titres empilés en haut de la page 1, sauf le dernier ;
+    docx : lignes en gras avant le 1er titre"""
     items = _items_corps(document)
     entete = "\n".join(item.text for item in items[:NB_ITEMS_ENTETE] if isinstance(item, TextItem))
 

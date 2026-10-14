@@ -1,13 +1,5 @@
-"""compte administrateur d'amorçage, défini dans le .env par l'empreinte de son mot de passe (jamais en clair) :
-
-    ADMIN_IDENTIFIANT=admin
-    ADMIN_EMPREINTE='scrypt$16384$8$1$...$...'      (générée par : python -m backend.auth.empreinte)
-    ADMIN_NOM=Administrateur                         (facultatif)
-
-au démarrage de l'API, s'il n'existe AUCUN administrateur actif, ce compte est créé (ou, s'il existe déjà,
-réactivé en administrateur avec ce mot de passe). dès qu'un administrateur actif existe, rien n'est touché :
-le .env ne peut pas écraser un compte par erreur, mais il rétablit l'accès si plus aucun admin n'est actif.
-"""
+"""compte admin d'amorçage du .env (ADMIN_IDENTIFIANT, ADMIN_EMPREINTE : python -m backend.auth.empreinte).
+créé ou rétabli au démarrage seulement si aucun administrateur actif n'existe"""
 import logging
 import os
 

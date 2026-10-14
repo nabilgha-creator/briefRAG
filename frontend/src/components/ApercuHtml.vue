@@ -1,9 +1,5 @@
 <script setup>
-/**
- * aperçu HTML d'un document docx, xlsx ou html (fourni par l'API), nettoyé par DOMPurify avant affichage.
- * le passage est retrouvé parmi les blocs (titres, paragraphes, éléments de liste, cellules) puis surligné ;
- * une question de FAQ repliée (<details>) est dépliée.
- */
+// aperçu HTML (docx, xlsx, html) nettoyé par DOMPurify ; passage surligné, question de FAQ dépliée
 import DOMPurify from 'dompurify'
 import { computed, nextTick, onMounted, ref } from 'vue'
 

@@ -1,12 +1,5 @@
-"""configuration Alembic du projet :
-- l'URL de la base vient du .env (via backend.database.db), jamais écrite dans alembic.ini
-- le schéma cible est celui des modèles SQLAlchemy (backend.database.models)
-
-commandes, depuis la racine du projet :
-- alembic upgrade head                                  applique les migrations en attente
-- alembic revision --autogenerate -m "description"      crée une migration après une modification de models.py
-- alembic check                                         vérifie que la base correspond aux modèles
-"""
+"""Alembic : URL lue dans le .env (backend.database.db), schéma cible = backend.database.models.
+alembic upgrade head | alembic revision --autogenerate -m "..." | alembic check"""
 from logging.config import fileConfig
 
 import pgvector.sqlalchemy  # noqa: F401  type vector utilisé par les migrations générées

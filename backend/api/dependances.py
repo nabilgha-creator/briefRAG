@@ -1,8 +1,5 @@
-"""dépendances injectées dans les routes : session de base de données, utilisateur connecté, droits admin.
-
-les routes qui écrivent font elles-mêmes session.commit() (explicite) ; ici, la session est annulée en cas d'erreur
-puis toujours fermée.
-"""
+"""dépendances des routes : session (annulée si erreur, toujours fermée), utilisateur connecté, droits admin.
+les routes qui écrivent font session.commit() elles-mêmes"""
 from collections.abc import Iterator
 from typing import Annotated
 

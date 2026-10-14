@@ -1,11 +1,5 @@
-"""structures de données du chargement des documents.
-
-- ChunkLu / DocumentLu : ce que renvoient les lecteurs (lecture_docling, lecture_html), sans métadonnées métier
-- ChunkCharge / DocumentCharge : le résultat final de data.py, prêt pour l'ingestion en base
-- ErreurReferentiel / Referentiel : le référentiel excel des codes erreur (lecture_excel)
-
-aucune dépendance a la base de données ni a LangChain.
-"""
+"""dataclasses du chargement : lu (sortie des lecteurs), chargé (prêt pour l'ingestion), référentiel.
+sans dépendance a la base"""
 from dataclasses import dataclass, field
 
 

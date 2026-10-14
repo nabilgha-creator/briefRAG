@@ -1,12 +1,5 @@
-"""aperçu HTML des documents, pour le lecteur du front (les pdf sont affichés tels quels, sans aperçu).
-
-- docx : titres, paragraphes, listes et tableaux (python-docx, déjà installé avec Docling)
-- xlsx : un tableau par onglet (pandas)
-- html : le contenu principal de la page, sans scripts, styles ni attributs d'événement (BeautifulSoup)
-
-ne dépend ni de la base ni de Docling (import léger pour l'API). le HTML produit est de toute façon
-nettoyé par le front (DOMPurify) avant affichage.
-"""
+"""aperçu HTML des docx, xlsx et html pour le lecteur (les pdf sont servis tels quels).
+sans base ni Docling ; le front nettoie de toute façon le HTML (DOMPurify)"""
 import html
 import logging
 import time

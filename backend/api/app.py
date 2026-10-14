@@ -1,11 +1,5 @@
-"""application FastAPI : le point d'entrée HTTP du chatbot (front Vue.js).
-
-lancement depuis la racine du projet :   uvicorn backend.api.app:app --reload
-documentation interactive des routes :   http://localhost:8000/docs
-
-réglage dans le .env : FRONT_ORIGINES = adresses autorisées a appeler l'API, séparées par des virgules
-(défaut : http://localhost:5173, le serveur de développement de Vue / Vite)
-"""
+"""application FastAPI (point d'entrée HTTP du front).
+lancement : uvicorn backend.api.app:app --reload ; routes sur /docs ; FRONT_ORIGINES (.env) = origines CORS"""
 import logging
 import os
 from collections.abc import AsyncIterator

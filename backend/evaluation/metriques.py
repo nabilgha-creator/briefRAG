@@ -1,15 +1,5 @@
-"""métriques de la recherche du RAG (sans base ni modèle : fonctions pures, testées seules).
-
-vocabulaire :
-- besoin : un document qu'il faut retrouver pour bien répondre, écrit comme un motif de chemin
-  ("Manuels/Manuel_WX-300.pdf", "Manuels/Manuel_WX-*.pdf") ; des alternatives séparées par "|" comptent pour un seul
-  besoin ("Manuels/Manuel_FR-*.pdf | FAQ/faq-fours.html" : n'importe lequel suffit)
-- acceptable : un document qui n'est pas indispensable mais contient aussi la réponse (le manuel, en plus de la
-  procédure) : l'envoyer n'est pas une erreur
-- rappel (recall) : part des besoins couverts par les extraits envoyés au LLM. 1 = rien ne manque
-- précision : part des extraits envoyés qui viennent d'un document attendu ou acceptable. 1 = aucun extrait inutile
-- rang du premier pertinent, et sa moyenne inverse (MRR) : un document utile arrive-t-il en tête ?
-"""
+"""rappel, précision et MRR de la recherche (fonctions pures). besoin = motif de chemin ("Manuels/Manuel_WX-*.pdf"),
+alternatives séparées par "|" ; acceptable = utile sans être indispensable (compte pour la précision)"""
 from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
 

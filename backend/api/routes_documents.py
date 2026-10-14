@@ -1,8 +1,5 @@
-"""documents pour le lecteur du front : fichier d'origine, aperçu HTML et passage d'une source.
-
-les droits de lecture des rôles s'appliquent ici aussi : un conseiller n'ouvre que les documents des catégories
-de ses rôles. seules les sources enregistrées en base sont servies (jamais un chemin libre du disque).
-"""
+"""documents du lecteur : fichier, aperçu HTML, passage cité. droits des rôles appliqués ;
+seules les sources enregistrées en base sont servies"""
 import logging
 from pathlib import Path
 

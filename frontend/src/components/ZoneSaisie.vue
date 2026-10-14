@@ -1,10 +1,6 @@
 <script setup>
-/**
- * zone de saisie de la question, avec un fondu sur chaque caractère tapé.
- * un <textarea> ne permet pas d'animer ses caractères : le texte est donc dessiné dans un calque "miroir"
- * (un <span> par caractère, chaque nouveau <span> apparaît en fondu) placé sous le textarea, dont le texte
- * est transparent. le textarea garde tout le reste : curseur, sélection, copier-coller, accessibilité.
- */
+// fondu a la frappe : un <textarea> n'anime pas ses caractères, le texte est redessiné dessous (un <span> par
+// caractère) ; le textarea, au texte transparent, garde curseur, sélection et copier-coller
 import { computed, nextTick, ref, watch } from 'vue'
 import Icone from './Icone.vue'
 

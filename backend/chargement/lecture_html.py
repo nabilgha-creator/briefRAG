@@ -1,9 +1,5 @@
-"""lecture des pages FAQ html avec BeautifulSoup : un chunk par question / réponse.
-
-Docling lit bien ces pages mais regroupe toutes les questions d'une section dans un seul chunk :
-le vecteur mélange alors 4 a 6 sujets et la recherche perd en précision.
-structure attendue : <section> avec un <h2>, puis des <details><summary>question</summary>réponse</details>
-"""
+"""FAQ html avec BeautifulSoup : un chunk par <details> (question + réponse).
+Docling regroupait les questions d'une section : un seul vecteur pour 4 a 6 sujets"""
 import logging
 import re
 from pathlib import Path

@@ -1,12 +1,5 @@
-"""conversations de l'utilisateur connecté et questions a l'assistant.
-
-deux façons de poser une question :
-- POST /conversations/{id}/messages       réponse complète en JSON
-- POST /conversations/{id}/messages/flux  réponse au fil de l'eau (server-sent events), pour l'affichage progressif :
-    event: morceau  data: {"texte": "..."}                                   (plusieurs fois)
-    event: fin      data: {"id_message": ..., "sources": [...], "consommation": {...}}
-    event: erreur   data: {"message": "..."}                                 (a la place de "fin" si le LLM échoue)
-"""
+"""conversations et questions : réponse en JSON (POST .../messages) ou en SSE (POST .../messages/flux),
+événements morceau (texte) puis fin (sources, consommation) ou erreur"""
 import json
 import logging
 from collections.abc import Iterator

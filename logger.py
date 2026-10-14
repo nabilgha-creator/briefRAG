@@ -13,11 +13,7 @@ BIBLIOTHEQUES_BAVARDES = ("docling", "docling_core", "httpx", "httpcore", "huggi
 
 
 def configurer_logs(niveau_console: int = logging.INFO) -> None:
-    """configure les logs UNE fois, a appeler au demarrage du programme (point d'entree)
-
-    - console : niveau_console et plus (INFO par defaut)
-    - fichier logs/briefrag.log : tout a partir de DEBUG, 5 Mo max, 3 anciens fichiers gardes
-    """
+    """a appeler une fois au point d'entrée : console (niveau_console), fichier logs/briefrag.log (DEBUG, 5 Mo x 3)"""
     racine = logging.getLogger()
     if racine.handlers:          # deja configure : on ne double pas les handlers
         return

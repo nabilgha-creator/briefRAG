@@ -1,10 +1,5 @@
-"""lecture du référentiel excel des codes erreur : un onglet par gamme.
-
-structure attendue d'un onglet :
-- 1re ligne : titre "Référentiel des codes erreur — Lave-linge serie WX" (type d'appareil + gamme)
-- une ligne "Version 2025-T4 ..." avant le tableau
-- une ligne d'en-tête qui commence par "Code", puis une ligne par code erreur
-"""
+"""référentiel excel des codes erreur, un onglet par gamme : titre (type + gamme), ligne « Version ... »,
+puis tableau dont l'en-tête commence par « Code »"""
 import logging
 import re
 from pathlib import Path
