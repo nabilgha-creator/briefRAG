@@ -68,3 +68,10 @@ def test_reference_de_piece_trouvee_par_les_termes(session_bd) :
 def test_recherche_lexicale_respecte_les_droits(session_bd) :
     contexte = rechercher_contexte(session_bd, "Le technicien doit-il contrôler le relais K2 ?", [], categories=["FAQ"])
     assert all(source.startswith("FAQ/") for source in _sources(contexte))
+
+
+def test_relance_sans_sujet_cherche_avec_la_question_precedente(session_bd) :
+    """non-régression : une relance qui ne parle pas du sujet (> 8 mots) ne trouvait aucun extrait"""
+    contexte = rechercher_contexte(session_bd, "d'accord, ce n'est pas pour moi mais pour ma belle-mère",
+                                   ["La porte du four est bloquée après la cuisson, que faire ?"])
+    assert "FAQ/faq-fours.html" in _sources(contexte)

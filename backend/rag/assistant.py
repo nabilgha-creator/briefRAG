@@ -35,9 +35,15 @@ class ReponseAssistant :
     consommation : Consommation | None = None
 
 
+def pour_historique(texte : str) -> str :
+    """message renvoyé au LLM dans l'historique : tronqué, sans les [n] (leurs sources ne sont plus jointes,
+    le LLM les prendrait pour des inventions ou pour les sources du tour en cours)"""
+    return re.sub(r"\s*" + RE_CITATION.pattern, "", texte)[:MAX_CARACTERES_MESSAGE]
+
+
 def historique_conversation(session : Session, conversation : Conversation) -> list[dict[str, str]] :
-    """derniers messages au format du LLM, les plus longs tronqués"""
-    return [{"role": message.role, "content": message.contenu[:MAX_CARACTERES_MESSAGE]}
+    """derniers messages au format du LLM"""
+    return [{"role": message.role, "content": pour_historique(message.contenu)}
             for message in derniers_messages(session, conversation, MAX_MESSAGES_HISTORIQUE)]
 
 

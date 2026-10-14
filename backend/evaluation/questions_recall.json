@@ -91,6 +91,10 @@
     {"theme": "termes précis", "question": "Le remplacement des charbons moteur est-il couvert par la garantie ?",
      "documents": ["Garanties/CGV_Electrodomus.pdf | FAQ/faq-lave-linge.html"],
      "acceptables": ["Garanties/CGV_Electrodomus.pdf", "FAQ/faq-lave-linge.html", "Garanties/Fiche_Garantie_Gamme_WX.pdf", "Manuels/Manuel_WX-*.pdf"]},
+    {"theme": "conversation", "question": "d'accord, ce n'est pas pour moi mais pour ma belle-mère",
+     "historique": ["La porte du four est bloquée après la cuisson, que faire ?"],
+     "documents": ["FAQ/faq-fours.html | Procedures_SAV/PROC-FR-01_Pyrolyse.docx"],
+     "acceptables": ["Manuels/Manuel_FR-*.pdf", "Procedures_SAV/PROC-FR-*", "FAQ/faq-fours.html"]},
     {"theme": "code erreur", "question": "Que signifie le code E15 ?",
      "documents": ["Procedures_SAV/PROC-LV-02_Fuite_E15.docx"], "fiches": ["E15"],
      "acceptables": ["Manuels/Manuel_LV-*.pdf", "FAQ/faq-lave-vaisselle.html"]}

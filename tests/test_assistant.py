@@ -2,7 +2,7 @@
 from backend.auth.droits import categories_autorisees, peut_lire
 from backend.database.crud_conversations import titre_depuis_question
 from backend.database.models import Role, Utilisateur
-from backend.rag.assistant import references_citees
+from backend.rag.assistant import pour_historique, references_citees
 from backend.rag.prompts import PROMPT_SYSTEME, construire_messages, formater_pages, message_avec_contexte
 from backend.rag.recherche import Appareils, Contexte, Extrait, FicheErreur, Reference
 
@@ -77,3 +77,8 @@ def test_titre_tire_de_la_premiere_question() :
     assert titre_depuis_question("  Mon WX-500   affiche E52  ") == "Mon WX-500 affiche E52"
     titre = titre_depuis_question("mot " * 50)
     assert len(titre) <= 80 and titre.endswith("…")
+
+
+def test_historique_sans_numeros_de_citation() :
+    """les sources des tours précédents ne sont plus jointes : un [2] resté dans l'historique faisait douter le LLM"""
+    assert pour_historique("La porte reste verrouillée 30 à 45 min [2]. Voir [1][3].") == "La porte reste verrouillée 30 à 45 min. Voir."

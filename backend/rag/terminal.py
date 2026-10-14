@@ -4,7 +4,7 @@ lancement depuis la racine du projet : python -m backend.rag.terminal
 import logging
 
 from backend.database.db import SessionLocal
-from backend.rag.assistant import MAX_CARACTERES_MESSAGE, preparer, references_citees
+from backend.rag.assistant import pour_historique, preparer, references_citees
 from backend.rag.llm import ErreurLLM, FluxLLM
 from backend.rag.prompts import formater_pages
 
@@ -45,7 +45,7 @@ def converser() -> None :
                 print("\n\nSources :")
                 for source in sources :
                     print(f"  [{source.numero}] {source.titre} ({source.source}{formater_pages(source.pages)})")
-        historique += [{"role": "user", "content": question}, {"role": "assistant", "content": texte[:MAX_CARACTERES_MESSAGE]}]
+        historique += [{"role": "user", "content": question}, {"role": "assistant", "content": pour_historique(texte)}]
 
 
 if __name__ == "__main__" :

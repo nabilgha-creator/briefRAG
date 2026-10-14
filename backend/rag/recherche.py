@@ -226,6 +226,30 @@ def texte_de_recherche(question : str, questions_precedentes : list[str]) -> str
     return question
 
 
+def _extraits(session : Session, texte : str, question : str, appareils : Appareils, modeles : list[Modele],
+              categories : list[str] | None, ids_erreurs : list[int], fiches : list[FicheErreur]) -> list[Extrait] :
+    """extraits proches + extraits liés aux erreurs, numérotés après les fiches.
+    vecteurs : texte (question précédente comprise pour une relance) ; termes exacts : la question seule"""
+    vecteur = vectoriser_question(texte)
+    proches = _rechercher_equilibre(session, vecteur, question, appareils.modeles, modeles, categories)
+    lies = (rechercher_chunks(session, vecteur, NB_EXTRAITS_LIES_AUX_ERREURS, modeles=appareils.modeles or None,
+                              ids_erreurs=ids_erreurs, categories=categories) if ids_erreurs else [])
+
+    # écartés (tokens) : texte déjà retenu (même paragraphe dans plusieurs manuels), ligne du référentiel déjà en fiche
+    deja_fournis = [f"{fiche.code} — {fiche.signification}" for fiche in fiches]
+    retenus : dict[int, tuple[Chunk, float]] = {}
+    textes_vus : set[str] = set()
+    for chunk, distance in sorted(lies + proches, key=lambda paire : paire[1]) :
+        texte_sans_titre = chunk.contenu.split("\n", 1)[-1]
+        if chunk.id_chunk in retenus or texte_sans_titre in textes_vus or any(ligne in chunk.contenu for ligne in deja_fournis) :
+            continue
+        retenus[chunk.id_chunk] = (chunk, distance)
+        textes_vus.add(texte_sans_titre)
+    return [Extrait(len(fiches) + index + 1, chunk.rel_document.titre, chunk.rel_document.source, chunk.pages or [],
+                    chunk.contenu, distance, chunk.id_chunk)
+            for index, (chunk, distance) in enumerate(retenus.values())]
+
+
 def rechercher_contexte(session : Session, question : str, questions_precedentes : list[str],
                         categories : list[str] | None = None) -> Contexte :
     """questions_precedentes : de la plus ancienne a la plus récente ; categories : droits (None = toutes)"""
@@ -247,29 +271,12 @@ def rechercher_contexte(session : Session, question : str, questions_precedentes
             ids_erreurs.extend(erreur.id_erreur for erreur in erreurs)
 
     texte = texte_de_recherche(question, questions_precedentes)
-    vecteur = vectoriser_question(texte)
-    filtre = appareils.modeles or None
-    proches = _rechercher_equilibre(session, vecteur, texte, appareils.modeles, modeles, categories)
-    lies = (rechercher_chunks(session, vecteur, NB_EXTRAITS_LIES_AUX_ERREURS, modeles=filtre, ids_erreurs=ids_erreurs, categories=categories)
-            if ids_erreurs else [])
-
-    # les extraits liés aux erreurs sont pertinents par construction ; les autres ont passé le seuil (cf. _plus_proches).
-    # écartés pour économiser des tokens : un extrait qui répète une fiche erreur déjà fournie (ligne du référentiel),
-    # et un texte identique a un extrait déjà retenu (même paragraphe dans les manuels de plusieurs modèles)
-    deja_fournis = [f"{fiche.code} — {fiche.signification}" for fiche in fiches]
-    retenus : dict[int, tuple[Chunk, float]] = {}
-    textes_vus : set[str] = set()
-    candidats = lies + proches
-    for chunk, distance in sorted(candidats, key=lambda paire : paire[1]) :
-        texte_sans_titre = chunk.contenu.split("\n", 1)[-1]
-        if chunk.id_chunk in retenus or texte_sans_titre in textes_vus or any(ligne in chunk.contenu for ligne in deja_fournis) :
-            continue
-        retenus[chunk.id_chunk] = (chunk, distance)
-        textes_vus.add(texte_sans_titre)
-    ordonnes = list(retenus.values())
-    extraits = [Extrait(len(fiches) + index + 1, chunk.rel_document.titre, chunk.rel_document.source, chunk.pages or [],
-                        chunk.contenu, distance, chunk.id_chunk)
-                for index, (chunk, distance) in enumerate(ordonnes)]
+    extraits = _extraits(session, texte, question, appareils, modeles, categories, ids_erreurs, fiches)
+    if not extraits and not fiches and questions_precedentes and texte == question :
+        # réplique sans le sujet ("c'était pas mon enfant mais...") : on cherche avec la question précédente
+        logger.info("aucun extrait : recherche avec la question précédente")
+        extraits = _extraits(session, f"{questions_precedentes[-1]}\n{question}", question, appareils, modeles, categories,
+                             ids_erreurs, fiches)
     referentiel = get_document_par_categorie(session, CATEGORIE_REFERENTIEL) if fiches else None
 
     logger.info("contexte : appareil %s | codes %s | %d fiche(s) | %d extrait(s) (distances %s)",
