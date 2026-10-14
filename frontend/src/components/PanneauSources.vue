@@ -1,5 +1,6 @@
 <script setup>
-// sources de la réponse sélectionnée : type, titre, extrait, pertinence, fichier et pages
+// sources de la réponse sélectionnée : type, titre, extrait, fichier et pages
+// (la distance cosinus reste dans les données de l'API pour le diagnostic, elle n'est pas affichée au conseiller)
 import { nextTick, ref, watch } from 'vue'
 
 import Icone from './Icone.vue'
@@ -12,12 +13,6 @@ const props = defineProps({
 const emit = defineEmits(['choisir', 'fermer'])     // fermer : en mode tiroir (écran < 1200 px)
 
 const elements = ref({})
-
-function pertinence(source) {
-  if (source.distance === null || source.distance === undefined) return { largeur: '100%', mention: 'donnée exacte' }
-  const pourcentage = Math.max(5, Math.min(100, Math.round((1 - source.distance) * 100)))
-  return { largeur: `${pourcentage}%`, mention: `distance ${source.distance.toFixed(2).replace('.', ',')}` }
-}
 
 function emplacement(source) {
   const pages = pagesLisibles(source.pages)
@@ -58,10 +53,6 @@ watch(() => props.sourceActive, async (numero) => {
         </span>
         <span class="titre">{{ source.titre }}</span>
         <span v-if="source.extrait" class="extrait">{{ source.extrait }}</span>
-        <span class="ligne">
-          <span class="jauge"><span class="jauge-remplie" :style="{ width: pertinence(source).largeur }"></span></span>
-          <span class="mono mention">{{ pertinence(source).mention }}</span>
-        </span>
         <span class="mono chemin">{{ emplacement(source) }}</span>
       </button>
     </TransitionGroup>
@@ -184,29 +175,6 @@ h2 {
   color: var(--doux);
 }
 
-.jauge {
-  flex: 1;
-  height: 4px;
-  border-radius: 999px;
-  background-color: var(--eleve2);
-  overflow: hidden;
-}
-
-.jauge-remplie {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background-image: var(--degrade);
-  transform-origin: left;
-  animation: jauge 1.1s 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-
-@keyframes jauge {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-
-.mention,
 .chemin {
   font-size: 11px;
   color: var(--discret);
