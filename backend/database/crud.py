@@ -72,6 +72,11 @@ def lister_documents(session : Session) -> list[Document] :
     return list(session.scalars(select(Document).order_by(Document.source)))
 
 
+def empreintes_des_documents(session : Session) -> dict[str, str | None] :
+    """{source: empreinte du fichier ingéré} pour tous les documents en base (None : ingéré avant les empreintes)"""
+    return {source : empreinte for source, empreinte in session.execute(select(Document.source, Document.empreinte))}
+
+
 def get_document_par_categorie(session : Session, categorie : str) -> Document | None :
     """le premier document de cette catégorie (le référentiel des codes erreur est seul dans la sienne), ou None"""
     return session.scalars(select(Document).where(Document.categorie == categorie).order_by(Document.source)).first()
@@ -83,16 +88,15 @@ def supprimer_document(session : Session, document : Document) -> None :
     session.delete(document)
 
 
-def remplacer_document(session : Session, source : str, titre : str, version : str | None = None, *, categorie : str) -> Document :
-    """crée un document vide ; si le fichier source a déjà été ingéré, l'ancien document et ses chunks sont supprimés avant
-    (une nouvelle édition remplace donc la précédente). permet de relancer l'ingestion sans créer de doublons.
-    categorie : Manuel, FAQ... (sert aux droits de lecture des rôles)"""
+def remplacer_document(session : Session, source : str, titre : str, version : str | None = None, *, categorie : str,
+                       empreinte : str | None = None) -> Document :
+    """crée le document après avoir supprimé l'ancienne version du même fichier (relance sans doublons)"""
     ancien = get_document(session, source)
     if ancien is not None :
         supprimer_document(session, ancien)
         session.flush()
 
-    document = Document(source=source, categorie=categorie, titre=titre, version=version)
+    document = Document(source=source, categorie=categorie, titre=titre, version=version, empreinte=empreinte)
     session.add(document)
     return document
 
@@ -150,13 +154,8 @@ def get_chunk(session : Session, id_chunk : int) -> Chunk | None :
 
 def rechercher_chunks(session : Session, vecteur : list[float], limite : int = 5, modeles : list[str] | None = None,
                       ids_erreurs : list[int] | None = None, categories : list[str] | None = None) -> list[tuple[Chunk, float]] :
-    """renvoie les chunks les plus proches du vecteur de la question, du plus proche au plus loin, avec leur distance cosinus
-    (0 = identique, 2 = opposé). le document de chaque chunk est chargé avec lui.
-    - modeles : ne cherche que dans les chunks liés a l'un de ces modeles et dans les chunks liés a aucun modele
-      (documents généraux comme les CGV, valables pour tous les appareils)
-    - ids_erreurs : ne cherche que dans les chunks liés a l'une de ces erreurs
-    - categories : ne cherche que dans les documents de ces catégories (droits de l'utilisateur) ;
-      None = toutes, liste vide = aucune"""
+    """chunks les plus proches (distance cosinus, document chargé). modeles : ces modèles ou aucun
+    (documents généraux) ; categories : droits, None = toutes, [] = aucune"""
     distance = Chunk.vecteur.cosine_distance(vecteur).label("distance")
     stmt = select(Chunk, distance).where(Chunk.vecteur.is_not(None)).options(selectinload(Chunk.rel_document))
     stmt = _filtrer(stmt, modeles, ids_erreurs, categories).order_by(distance).limit(limite)

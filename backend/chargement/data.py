@@ -1,12 +1,6 @@
-"""chargement de la documentation : lecture, découpage, métadonnées.
-
-- documents pdf, docx, html -> DocumentCharge (charger_documents)
-- référentiel excel des codes erreur -> Referentiel (charger_referentiel), qui donne aussi
-  un DocumentCharge d'un chunk par code erreur pour la recherche (document_du_referentiel)
-
-ne dépend ni de la base de données ni de LangChain.
-lancement depuis la racine du projet : python -m backend.chargement.data (écrit assets/chunks.json pour contrôle)
-"""
+"""chargement de la documentation (lecture, découpage, métadonnées), sans base.
+python -m backend.chargement.data écrit assets/chunks.json pour contrôle"""
+import hashlib
 import json
 import logging
 import re
@@ -14,7 +8,7 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 
-from backend.config import ASSETS, CATEGORIE_PAR_DEFAUT, CATEGORIE_REFERENTIEL, CATEGORIES_PAR_DOSSIER, DOCS
+from backend.config import ASSETS, CATEGORIE_PAR_DEFAUT, CATEGORIE_REFERENTIEL, CATEGORIES_PAR_DOSSIER, DOCS, MODELE_EMBEDDING
 from backend.chargement.chunker import MAX_TOKENS_CHUNK, TOKENS_RESERVES_CONTEXTE, compter_tokens
 from backend.chargement.lecture_docling import lire_document_docling
 from backend.chargement.lecture_excel import lire_referentiel
@@ -27,6 +21,9 @@ EXTENSIONS = {".pdf", ".docx", ".html"}
 FICHIER_REFERENTIEL = DOCS / "Referentiel_codes_erreur.xlsx"
 DOSSIER_CACHE = ASSETS / "cache_docling"
 FICHIER_EXPORT = ASSETS / "chunks.json"
+# a changer quand les règles de lecture ou de découpage changent : toutes les empreintes changent,
+# la prochaine ingestion retraite donc tous les documents (cf. empreinte_du_fichier)
+VERSION_DECOUPAGE = "2026-10-14"
 
 # préfixe de gamme -> type d'appareil (cf. onglets du référentiel des codes erreur)
 GAMMES = {"WX": "lave-linge", "LV": "lave-vaisselle", "FR": "four"}
@@ -67,11 +64,8 @@ def _perimetre_declare(chunks : list[ChunkLu]) -> str | None :
 
 
 def _modeles_du_document(titre : str, nom_fichier : str, chunks : list[ChunkLu]) -> tuple[set[str], set[str]] :
-    """modèles et gammes dont parle tout le document :
-    1. la rubrique "Modèles concernés" si le document en a une (la plus précise)
-    2. sinon le titre et le nom de fichier ; a défaut de modèle ou de gamme explicite,
-       le type d'appareil du titre ("FAQ lave-linge") donne la gamme
-    rien trouvé = document général (CGV) qui concerne tous les appareils"""
+    """modèles et gammes du document : rubrique « Modèles concernés », sinon titre et nom du fichier,
+    sinon type d'appareil du titre ; rien = document général (CGV), valable pour tous"""
     perimetre = _perimetre_declare(chunks)
     if perimetre is not None :
         modeles, gammes = set(RE_MODELE.findall(perimetre)), set(RE_GAMME.findall(perimetre))
@@ -107,6 +101,14 @@ def _construire_chunk(position : int, lu : ChunkLu, prefixe : str, modeles : set
 def source_du_fichier(chemin : Path) -> str :
     """identifiant stable du fichier : son chemin relatif au dossier de documentation"""
     return chemin.relative_to(DOCS).as_posix() if chemin.is_relative_to(DOCS) else chemin.name
+
+
+def empreinte_du_fichier(chemin : Path) -> str :
+    """sha256 du contenu du fichier et de la façon de le traiter (version du découpage, modèle d'embedding) :
+    elle change si le fichier change, mais aussi si les chunks ou leurs vecteurs seraient calculés autrement"""
+    empreinte = hashlib.sha256(f"{VERSION_DECOUPAGE}|{MODELE_EMBEDDING}|".encode("utf-8"))
+    empreinte.update(chemin.read_bytes())
+    return empreinte.hexdigest()
 
 
 def lister_fichiers(dossier : Path = DOCS) -> list[Path] :

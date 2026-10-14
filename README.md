@@ -112,6 +112,11 @@ Lit le référentiel des codes erreur puis tous les documents, les découpe, cal
 Le premier passage prend une dizaine de minutes (conversion des PDF, téléchargement du modèle bge-m3 d'environ 2 Go) ;
 les conversions sont ensuite gardées en cache dans `assets/cache_docling/`.
 
+L'ingestion est **incrémentale** : chaque document garde l'empreinte de son fichier, et une nouvelle ingestion ne
+retraite que les fichiers nouveaux ou modifiés (les fichiers supprimés disparaissent de la base). Tout est retraité si
+le référentiel Excel change, si les règles de découpage changent (`VERSION_DECOUPAGE` dans `backend/chargement/data.py`)
+ou avec `python -m backend.ingestion --tout`.
+
 ### 3. Définir le compte administrateur
 
 Le premier compte est défini dans le `.env` par l'**empreinte** de son mot de passe (jamais le mot de passe en clair).
@@ -206,7 +211,7 @@ modèles). Les résultats sont enregistrés en CSV dans `assets/evaluation/` (ou
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `python -m backend.rag.terminal`                   | essayer l'assistant dans le terminal, sans le front                                                                                          |
 | `python -m backend.chargement.data`                | découper la documentation sans toucher à la base ; résultat dans`assets/chunks.json`                                                    |
-| `python -m backend.ingestion`                      | réingérer après un ajout ou une modification de document (un document modifié est remplacé, un fichier supprimé disparaît de la base) |
+| `python -m backend.ingestion`                      | réingérer après un ajout ou une modification de document : seuls les fichiers nouveaux ou modifiés sont retraités (`--tout` pour tout refaire) |
 | `alembic revision --autogenerate -m "description"` | créer une migration après une modification de`backend/database/models.py`                                                                |
 | `alembic upgrade head`                             | appliquer les migrations en attente                                                                                                          |
 | `alembic check`                                    | vérifier que la base correspond aux modèles                                                                                                |

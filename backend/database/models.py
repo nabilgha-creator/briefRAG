@@ -47,7 +47,8 @@ class Document (Base) :
     categorie : Mapped[str] = mapped_column(String(50), nullable=False, index=True)    # Manuel, FAQ... (droits de lecture des rôles)
     titre : Mapped[str] = mapped_column(String(150), nullable=False)
     version : Mapped[str | None] = mapped_column(String(150), nullable=True)
-    date_enr : Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now() )   
+    empreinte : Mapped[str | None] = mapped_column(String(64), nullable=True)          # sha256 du fichier ingéré : inchangé = pas de retraitement
+    date_enr : Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now() )
     
     rel_chunk = relationship("Chunk", back_populates="rel_document" , cascade="all, delete-orphan")
     
