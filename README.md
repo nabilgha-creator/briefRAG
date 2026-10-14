@@ -79,7 +79,9 @@ ADMIN_EMPREINTE='scrypt$...'
 
 # facultatif
 HF_TOKEN=...                                  # token Hugging Face (téléchargement des modèles)
-MODELE_LLM=anthropic/claude-haiku-4.5         # modèle OpenRouter (valeur par défaut)
+MODELE_LLM=anthropic/claude-haiku-5.5         # modèle OpenRouter (valeur par défaut)
+EFFORT_LLM=low                                # réflexion du modèle avant de répondre : low, medium, high (défaut low)
+TEMPERATURE_LLM=                              # seulement pour un modèle qui l'accepte (Haiku 5.5 la refuse)
 DB_ECHO=false                                 # true : affiche le SQL exécuté
 FRONT_ORIGINES=http://localhost:5173          # origines autorisées par l'API (CORS)
 ```
@@ -215,5 +217,6 @@ Les logs détaillés sont dans `logs/briefrag.log`.
 
 ## Coût
 
-Avec `anthropic/claude-haiku-4.5` (1 $ en entrée / 5 $ en sortie par million de tokens), une question coûte
-environ 0,3 centime. Le coût et les tokens de chaque réponse sont enregistrés dans la table `message`.
+Avec `anthropic/claude-haiku-5.5` (0,10 $ en entrée / 0,50 $ en sortie par million de tokens, pour un prompt de moins
+de 100 000 tokens), une question coûte environ 0,04 à 0,08 centime, réflexion du modèle comprise (contre 0,3 centime
+avec Claude Haiku 4.5). Le coût et les tokens de chaque réponse sont enregistrés dans la table `message`.

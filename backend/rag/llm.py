@@ -3,7 +3,10 @@ ne dépend ni de la base de données ni du reste du projet.
 
 réglages dans le .env :
 - CLE_OPENR : clé API OpenRouter (obligatoire)
-- MODELE_LLM : modèle OpenRouter (défaut anthropic/claude-haiku-4.5 : 1 $ / 5 $ par million de tokens entrée / sortie)
+- MODELE_LLM : modèle OpenRouter (défaut anthropic/claude-haiku-5.5 : 0,10 $ / 0,50 $ par million de tokens entrée / sortie)
+- EFFORT_LLM : effort de réflexion du modèle avant de répondre : low, medium ou high (défaut low)
+- TEMPERATURE_LLM : facultatif, seulement pour un modèle qui l'accepte. Claude Haiku 5.5 refuse toute température autre
+  que celle par défaut (erreur 400) : c'est sa réflexion qui stabilise les réponses, guidées par le prompt système
 """
 import json
 import logging
@@ -21,9 +24,9 @@ logger = logging.getLogger(__name__)
 
 URL_OPENROUTER = "https://openrouter.ai/api/v1/chat/completions"
 VARIABLE_CLE = "CLE_OPENR"
-MODELE_PAR_DEFAUT = "anthropic/claude-haiku-4.5"
-TEMPERATURE = 0.2               # réponses factuelles : peu de variabilité
-MAX_TOKENS_REPONSE = 900        # plafond de la réponse, donc du coût de sortie
+MODELE_PAR_DEFAUT = "anthropic/claude-haiku-5.5"
+EFFORT_PAR_DEFAUT = "low"       # réponse a partir de sources fournies : peu de réflexion nécessaire, réponse plus rapide
+MAX_TOKENS_REPONSE = 4000       # plafond réflexion comprise (elle compte dans max_tokens), donc du coût de sortie
 DELAIS = httpx.Timeout(60.0, connect=10.0)
 NB_ESSAIS = 3
 STATUTS_A_REESSAYER = {408, 429, 500, 502, 503, 504}
@@ -59,8 +62,17 @@ def _entetes() -> dict[str, str] :
 
 
 def _corps(messages : list[dict[str, str]], flux : bool) -> dict :
-    return {"model": modele_llm(), "messages": messages, "temperature": TEMPERATURE, "max_tokens": MAX_TOKENS_REPONSE,
-            "stream": flux, "usage": {"include": True}}
+    corps = {"model": modele_llm(), "messages": messages, "max_tokens": MAX_TOKENS_REPONSE, "stream": flux,
+             "usage": {"include": True}, "reasoning": {"effort": os.getenv("EFFORT_LLM", EFFORT_PAR_DEFAUT)}}
+    temperature = os.getenv("TEMPERATURE_LLM")
+    if temperature :                # jamais envoyée par défaut : Claude Haiku 5.5 la refuse
+        corps["temperature"] = float(temperature)
+    return corps
+
+
+def _reponse_vide(fin : str | None) -> ErreurLLM :
+    """aucun texte : refus du modèle, ou réflexion qui a épuisé le plafond de tokens"""
+    return ErreurLLM(f"le modèle n'a renvoyé aucune réponse (motif : {fin or 'inconnu'}) : reformulez la question ou réessayez")
 
 
 def _message_erreur(reponse : httpx.Response) -> str :
@@ -109,7 +121,11 @@ def completer(messages : list[dict[str, str]]) -> ReponseLLM :
             raise ErreurLLM(f"erreur du modèle : {donnees['error'].get('message')}")
         consommation = _consommation(donnees)
         _journaliser(consommation, debut)
-        return ReponseLLM(texte=donnees["choices"][0]["message"]["content"] or "", consommation=consommation)
+        choix = donnees["choices"][0]
+        texte = choix["message"].get("content") or ""
+        if not texte.strip() :
+            raise _reponse_vide(choix.get("finish_reason"))
+        return ReponseLLM(texte=texte, consommation=consommation)
     raise ErreurLLM("OpenRouter : nombre d'essais dépassé")
 
 
@@ -120,6 +136,8 @@ class FluxLLM :
     def __init__(self, messages : list[dict[str, str]]) -> None :
         self.messages = messages
         self.consommation = Consommation(modele=modele_llm())
+        self.texte_recu = False
+        self.fin : str | None = None            # motif de fin du modèle (stop, length...)
 
     def __iter__(self) -> Iterator[str] :
         debut = time.perf_counter()
@@ -134,6 +152,8 @@ class FluxLLM :
                         raise ErreurLLM(f"OpenRouter a refusé la requête ({reponse.status_code}) : {_message_erreur(reponse)}")
                     yield from self._lire(reponse)
                     _journaliser(self.consommation, debut)
+                    if not self.texte_recu :
+                        raise _reponse_vide(self.fin)
                     return
             except httpx.TransportError as erreur :
                 if essai == NB_ESSAIS :
@@ -154,6 +174,8 @@ class FluxLLM :
             if donnees.get("usage") :
                 self.consommation = _consommation(donnees)
             for choix in donnees.get("choices", []) :
-                morceau = (choix.get("delta") or {}).get("content")
+                self.fin = choix.get("finish_reason") or self.fin
+                morceau = (choix.get("delta") or {}).get("content")      # la réflexion arrive a part ("reasoning") : ignorée
                 if morceau :
+                    self.texte_recu = True
                     yield morceau
