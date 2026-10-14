@@ -40,9 +40,9 @@ const emplacement = computed(() => {
   return pages ? `${fichier.value}, ${pages}` : fichier.value
 })
 
+// rien a dire quand le passage est surligné : on ne prévient que s'il n'a pas été retrouvé
 const etat = computed(() => {
-  if (!localisation.value) return ''
-  if (localisation.value.trouve) return 'passage surligné'
+  if (!localisation.value || localisation.value.trouve) return ''
   const page = localisation.value.page
   return page ? `passage non localisé précisément, ouvert à la page ${page}` : 'passage non localisé précisément'
 })
@@ -117,7 +117,7 @@ onBeforeUnmount(() => {
             <span class="ligne">
               <span class="pastille">{{ source.numero }}</span>
               <span class="type">{{ typeSource(fichier ?? source.source) }}</span>
-              <span v-if="etat" class="mono etat" :class="{ trouve: localisation?.trouve }">{{ etat }}</span>
+              <span v-if="etat" class="mono etat">{{ etat }}</span>
             </span>
             <h2 id="titre-lecteur">{{ source.titre }}</h2>
             <span v-if="fichier" class="mono chemin">{{ emplacement }}</span>
@@ -216,10 +216,6 @@ onBeforeUnmount(() => {
 .etat {
   font-size: 11px;
   color: var(--discret);
-}
-
-.etat.trouve {
-  color: var(--acc-texte);
 }
 
 h2 {
