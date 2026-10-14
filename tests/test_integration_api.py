@@ -119,3 +119,33 @@ def test_question_trop_longue_refusee(client, creer_compte, connecter) :
     conversation = client.post("/conversations", headers=entete, json={}).json()
     reponse = client.post(f"/conversations/{conversation['id_conversation']}/messages", headers=entete, json={"question": "x" * 2001})
     assert reponse.status_code == 422
+
+
+## CONTACT SAV ##
+
+def test_reponse_orientant_vers_le_sav(client, creer_compte, creer_role, connecter, monkeypatch) :
+    """le marqueur [SAV] du LLM (même découpé dans le flux) est retiré du texte et enregistré avec le message"""
+    from backend.rag.llm import Consommation
+
+    class FluxSav :
+        def __init__(self, messages : list[dict]) -> None :
+            self.consommation = Consommation(modele="faux-modele")
+
+        def __iter__(self) :
+            yield from ["Planifier un technicien [1].", "\n[S", "AV]"]
+
+    monkeypatch.setattr("backend.api.routes_conversations.FluxLLM", FluxSav)
+    creer_compte("test_conseiller", ids_roles=[creer_role("Test complet", TOUTES_CATEGORIES)])
+    entete = connecter("test_conseiller")
+    conversation = client.post("/conversations", headers=entete, json={}).json()
+    flux = client.post(f"/conversations/{conversation['id_conversation']}/messages/flux", headers=entete,
+                       json={"question": "Mon WX-500 affiche E52, que faire ?"})
+    assert _evenements(flux.text)[-1][1]["contact_sav"] is True
+    reponse = client.get(f"/conversations/{conversation['id_conversation']}", headers=entete).json()["messages"][-1]
+    assert reponse["contact_sav"] and reponse["contenu"] == "Planifier un technicien [1]."
+
+
+def test_coordonnees_du_sav(client, creer_compte, connecter) :
+    creer_compte("test_conseiller")
+    assert client.get("/sav").status_code == 401
+    assert client.get("/sav", headers=connecter("test_conseiller")).json()["telephone"] == "0 970 820 340"

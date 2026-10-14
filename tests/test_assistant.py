@@ -2,7 +2,7 @@
 from backend.auth.droits import categories_autorisees, peut_lire
 from backend.database.crud_conversations import titre_depuis_question
 from backend.database.models import Role, Utilisateur
-from backend.rag.assistant import pour_historique, references_citees
+from backend.rag.assistant import pour_historique, references_citees, separer_contact_sav
 from backend.rag.prompts import PROMPT_SYSTEME, construire_messages, formater_pages, message_avec_contexte
 from backend.rag.recherche import Appareils, Contexte, Extrait, FicheErreur, Reference
 
@@ -82,3 +82,8 @@ def test_titre_tire_de_la_premiere_question() :
 def test_historique_sans_numeros_de_citation() :
     """les sources des tours précédents ne sont plus jointes : un [2] resté dans l'historique faisait douter le LLM"""
     assert pour_historique("La porte reste verrouillée 30 à 45 min [2]. Voir [1][3].") == "La porte reste verrouillée 30 à 45 min. Voir."
+
+
+def test_marqueur_sav_retire_et_signale() :
+    assert separer_contact_sav("Planifier un technicien [1].\n[SAV]") == ("Planifier un technicien [1].", True)
+    assert separer_contact_sav("Nettoyer le filtre [2].") == ("Nettoyer le filtre [2].", False)
