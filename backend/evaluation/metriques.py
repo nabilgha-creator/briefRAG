@@ -36,6 +36,7 @@ class ResultatQuestion :
     fiches_attendues : list[str] = field(default_factory=list)
     fiches_trouvees : list[str] = field(default_factory=list)
     diagnostics : list[str] = field(default_factory=list)     # pourquoi un besoin manque (rempli par recall.py)
+    theme : str = ""                          # catégorie de la question dans le jeu de référence (rempli par recall.py)
 
     @property
     def reussite(self) -> bool :

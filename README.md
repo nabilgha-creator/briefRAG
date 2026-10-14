@@ -193,7 +193,8 @@ avec pour chacune les documents qui contiennent la réponse) et mesure, sans app
 - les **fiches erreur** exactes fournies.
 
 Pour chaque document manquant, le rapport dit pourquoi (seuil de distance, classement, dédoublonnage, filtre des
-modèles). Le rapport est aussi enregistré dans `assets/evaluation/` pour comparer les mesures dans le temps.
+modèles). Les résultats sont enregistrés en CSV dans `assets/evaluation/` (ouverture directe dans Excel) :
+`recall_<date>.csv` (une ligne par question) et `historique_recall.csv` (une ligne par mesure, pour suivre l'évolution).
 
 ## Commandes utiles
 
