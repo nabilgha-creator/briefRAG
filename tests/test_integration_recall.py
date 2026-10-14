@@ -7,8 +7,8 @@ from backend.evaluation.recall import charger_questions, evaluer_question, mesur
 
 pytestmark = pytest.mark.integration
 
-RAPPEL_MIN = 0.95           # mesuré : 1,00 (octobre 2026)
-PRECISION_MIN = 0.80        # mesuré : 0,90
+RAPPEL_MIN = 0.95           # mesuré : 1,00 sur 33 questions (octobre 2026, vecteurs + lexicale)
+PRECISION_MIN = 0.80        # mesuré : 0,87
 
 
 @pytest.fixture(scope="module")

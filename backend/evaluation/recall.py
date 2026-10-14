@@ -8,6 +8,7 @@ loin, écarté au dédoublonnage, ou exclu par le filtre des modèles.
 lancement depuis la racine du projet :
     python -m backend.evaluation.recall                             réglages actuels
     python -m backend.evaluation.recall --seuil 0.6 --extraits 6    autres réglages, sans modifier le code
+    python -m backend.evaluation.recall --sans-lexicale             recherche par vecteurs seule (pour comparer)
 les résultats sont enregistrés en csv dans assets/evaluation/ (séparateur « ; », virgule décimale : s'ouvre dans Excel) :
 - recall_<date>.csv : le détail, une ligne par question
 - historique_recall.csv : une ligne par mesure (réglages et synthèse), pour suivre l'évolution
@@ -52,7 +53,7 @@ def _diagnostic(session : Session, question : str, historique : list[str], model
         if distance > recherche.SEUIL_DISTANCE :
             cause = f"écarté par le seuil (distance {distance:.2f} > {recherche.SEUIL_DISTANCE})"
         elif rang > recherche.NB_EXTRAITS :
-            cause = f"classé trop loin (rang {rang}, distance {distance:.2f} ; {recherche.NB_EXTRAITS} extraits gardés)"
+            cause = f"classé trop loin (rang {rang} par vecteurs, distance {distance:.2f} ; {recherche.NB_EXTRAITS} extraits gardés)"
         else :
             cause = f"rang {rang}, distance {distance:.2f}, mais écarté au dédoublonnage ou par la répartition entre appareils"
         return f"{besoin} : {cause}"
@@ -90,7 +91,8 @@ def _ligne(numero : int, resultat : ResultatQuestion) -> str :
 
 
 def afficher(resultats : list[ResultatQuestion], synthese : Synthese) -> None :
-    print(f"\nRappel de la recherche : {synthese.nombre} questions (seuil {recherche.SEUIL_DISTANCE}, "
+    mode = "vecteurs + lexicale" if recherche.RECHERCHE_LEXICALE else "vecteurs seuls"
+    print(f"\nRappel de la recherche : {synthese.nombre} questions ({mode}, seuil {recherche.SEUIL_DISTANCE}, "
           f"{recherche.NB_EXTRAITS} extraits + {recherche.NB_EXTRAITS_LIES_AUX_ERREURS} liés aux codes erreur)\n")
     print("  #  rappel précision  1er    fiches    question")
     for numero, resultat in enumerate(resultats, 1) :
@@ -121,7 +123,8 @@ def reglages() -> dict[str, object] :
     """réglages de la recherche au moment de la mesure"""
     return {"seuil_distance": _decimal(recherche.SEUIL_DISTANCE), "nb_extraits": recherche.NB_EXTRAITS,
             "nb_extraits_lies_aux_erreurs": recherche.NB_EXTRAITS_LIES_AUX_ERREURS,
-            "candidats_par_extrait": recherche.CANDIDATS_PAR_EXTRAIT}
+            "candidats_par_extrait": recherche.CANDIDATS_PAR_EXTRAIT,
+            "recherche_lexicale": "oui" if recherche.RECHERCHE_LEXICALE else "non", "rrf_k": recherche.RRF_K}
 
 
 def _ecrire_detail(chemin : Path, resultats : list[ResultatQuestion]) -> None :
@@ -170,12 +173,15 @@ def main() -> None :
     parametres = argparse.ArgumentParser(description="mesure du rappel de la recherche du RAG")
     parametres.add_argument("--seuil", type=float, help=f"seuil de distance (actuel : {recherche.SEUIL_DISTANCE})")
     parametres.add_argument("--extraits", type=int, help=f"nombre d'extraits les plus proches (actuel : {recherche.NB_EXTRAITS})")
+    parametres.add_argument("--sans-lexicale", action="store_true", help="recherche par vecteurs seule, sans la recherche lexicale")
     arguments = parametres.parse_args()
     # réglages modifiés pour cette mesure seulement : rechercher_contexte lit ces valeurs a chaque appel
     if arguments.seuil is not None :
         recherche.SEUIL_DISTANCE = arguments.seuil
     if arguments.extraits is not None :
         recherche.NB_EXTRAITS = arguments.extraits
+    if arguments.sans_lexicale :
+        recherche.RECHERCHE_LEXICALE = False
 
     debut = time.perf_counter()
     with SessionLocal() as session :

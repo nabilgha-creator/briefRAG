@@ -4,7 +4,8 @@ Chatbot interne pour les conseillers du service après-vente : il répond aux qu
 lave-vaisselle (LV) et fours (FR) **à partir de la documentation Electrodomus** (manuels, procédures SAV,
 bulletins techniques, garanties, FAQ, référentiel des codes erreur) et cite ses sources.
 
-- **RAG** : recherche par vecteurs (bge-m3 + pgvector) et fiches erreur exactes, réponse rédigée par un LLM via OpenRouter
+- **RAG** : recherche hybride (vecteurs bge-m3 + pgvector pour le sens, BM25 pour les termes exacts : références de pièces,
+  bulletins, procédures) et fiches erreur exactes, réponse rédigée par un LLM via OpenRouter
 - **Réponses en streaming**, sources numérotées avec extrait, fichier et pages
 - **Lecteur de documents** : un clic sur une source ouvre le document (manuel PDF, procédure, FAQ, référentiel)
   au passage cité, surligné ; les droits de lecture des rôles s'appliquent aussi aux fichiers
@@ -182,9 +183,10 @@ pytest -m "not integration"  # tests unitaires seuls : ni base, ni réseau (≈ 
 ```bash
 python -m backend.evaluation.recall                             # réglages actuels
 python -m backend.evaluation.recall --seuil 0.6 --extraits 6    # comparer d'autres réglages, sans modifier le code
+python -m backend.evaluation.recall --sans-lexicale             # recherche par vecteurs seule
 ```
 
-Lance la vraie recherche du chatbot sur un jeu de 26 questions de référence (`backend/evaluation/questions_recall.json`,
+Lance la vraie recherche du chatbot sur un jeu de 33 questions de référence (`backend/evaluation/questions_recall.json`,
 avec pour chacune les documents qui contiennent la réponse) et mesure, sans appeler le LLM :
 
 - le **rappel** : part des documents attendus qui sont bien envoyés au LLM (1 = rien ne manque) ;
