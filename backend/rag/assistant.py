@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from backend.database.crud_conversations import TITRE_PAR_DEFAUT, ajouter_message, derniers_messages, titre_depuis_question
 from backend.database.models import Conversation, Message
 from backend.rag.llm import Consommation, completer
-from backend.rag.prompts import MESSAGE_PRECISION_MODELE, construire_messages
+from backend.rag.prompts import MARQUEUR_SAV, MESSAGE_PRECISION_MODELE, construire_messages
 from backend.rag.recherche import Reference, rechercher_contexte
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,12 @@ class ReponseAssistant :
     sources : list[Reference]
     message : Message | None = None
     consommation : Consommation | None = None
+    contact_sav : bool = False
+
+
+def separer_contact_sav(texte : str) -> tuple[str, bool] :
+    """(réponse sans le marqueur [SAV], marqueur présent ?)"""
+    return texte.replace(MARQUEUR_SAV, "").rstrip(), MARQUEUR_SAV in texte
 
 
 def pour_historique(texte : str) -> str :
@@ -69,14 +75,15 @@ def enregistrer_echange(session : Session, conversation : Conversation, preparat
     """enregistre la question et la réponse (avec ses sources citées et sa consommation) ; titre la conversation a sa 1re question"""
     if conversation.titre == TITRE_PAR_DEFAUT :
         conversation.titre = titre_depuis_question(preparation.question)
+    texte, contact_sav = separer_contact_sav(texte)
     sources = references_citees(texte, preparation.references)
     ajouter_message(session, conversation, "user", preparation.question)
     message = ajouter_message(session, conversation, "assistant", texte, sources=[asdict(source) for source in sources],
                               modele_llm=consommation.modele if consommation else None,
                               tokens_entree=consommation.tokens_entree if consommation else None,
                               tokens_sortie=consommation.tokens_sortie if consommation else None,
-                              cout=consommation.cout if consommation else None)
-    return ReponseAssistant(texte=texte, sources=sources, message=message, consommation=consommation)
+                              cout=consommation.cout if consommation else None, contact_sav=contact_sav)
+    return ReponseAssistant(texte=texte, sources=sources, message=message, consommation=consommation, contact_sav=contact_sav)
 
 
 def repondre(session : Session, conversation : Conversation, question : str, categories : list[str] | None = None) -> ReponseAssistant :

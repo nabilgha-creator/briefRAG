@@ -49,9 +49,9 @@ def supprimer_conversation(session : Session, conversation : Conversation) -> No
 
 def ajouter_message(session : Session, conversation : Conversation, role : str, contenu : str, sources : list[dict] | None = None,
                     modele_llm : str | None = None, tokens_entree : int | None = None, tokens_sortie : int | None = None,
-                    cout : float | None = None) -> Message :
+                    cout : float | None = None, contact_sav : bool = False) -> Message :
     message = Message(role=role, contenu=contenu, sources=sources, modele_llm=modele_llm, tokens_entree=tokens_entree,
-                      tokens_sortie=tokens_sortie, cout=Decimal(str(cout)) if cout is not None else None)
+                      tokens_sortie=tokens_sortie, cout=Decimal(str(cout)) if cout is not None else None, contact_sav=contact_sav)
     conversation.rel_message.append(message)
     conversation.date_maj = func.now()      # la conversation remonte en tête de liste
     session.add(message)

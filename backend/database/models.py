@@ -189,6 +189,7 @@ class Message(Base) :
     tokens_entree : Mapped[int | None] = mapped_column(Integer, nullable=True)
     tokens_sortie : Mapped[int | None] = mapped_column(Integer, nullable=True)
     cout : Mapped[Decimal | None] = mapped_column(Numeric(12, 6), nullable=True)      # en dollars, tel que facturé par OpenRouter
+    contact_sav : Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")   # réponse qui oriente vers le SAV
     date : Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     rel_conversation = relationship("Conversation", back_populates="rel_message")

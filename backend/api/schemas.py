@@ -119,6 +119,7 @@ class MessagePublic(DepuisORM) :
     contenu : str
     sources : list[Source] | None
     date : datetime
+    contact_sav : bool = False
 
 
 class ConversationResume(DepuisORM) :
@@ -156,6 +157,13 @@ class ReponseQuestion(BaseModel) :
     reponse : str
     sources : list[Source]
     consommation : Consommation | None
+    contact_sav : bool = False
+
+
+class ContactSav(BaseModel) :
+    telephone : str
+    mention : str
+    horaires : str
 
 
 ## LECTEUR DE DOCUMENTS ##

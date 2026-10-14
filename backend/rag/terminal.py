@@ -4,7 +4,8 @@ lancement depuis la racine du projet : python -m backend.rag.terminal
 import logging
 
 from backend.database.db import SessionLocal
-from backend.rag.assistant import pour_historique, preparer, references_citees
+from backend.config import CONTACT_SAV
+from backend.rag.assistant import pour_historique, preparer, references_citees, separer_contact_sav
 from backend.rag.llm import ErreurLLM, FluxLLM
 from backend.rag.prompts import formater_pages
 
@@ -39,8 +40,10 @@ def converser() -> None :
             except ErreurLLM as erreur :
                 print(f"\n[erreur] {erreur}")
                 continue
-            texte = "".join(morceaux)
+            texte, contact_sav = separer_contact_sav("".join(morceaux))
             sources = references_citees(texte, preparation.references)
+            if contact_sav :
+                print(f"\n\nContacter le SAV : {CONTACT_SAV['telephone']} ({CONTACT_SAV['mention']}), {CONTACT_SAV['horaires']}")
             if sources :
                 print("\n\nSources :")
                 for source in sources :

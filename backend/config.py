@@ -27,3 +27,6 @@ CATEGORIES_PAR_DOSSIER = {
 CATEGORIE_REFERENTIEL = "Référentiel codes erreur"      # référentiel excel : ses chunks ET les fiches erreur exactes
 CATEGORIE_PAR_DEFAUT = "Document"                        # fichier rangé hors des dossiers connus
 CATEGORIES = [*CATEGORIES_PAR_DOSSIER.values(), CATEGORIE_REFERENTIEL, CATEGORIE_PAR_DEFAUT]
+
+# coordonnées du SAV client (CGV, article 8), affichées par le bouton « Contacter le SAV » des réponses
+CONTACT_SAV = {"telephone" : "0 970 820 340", "mention" : "appel non surtaxé", "horaires" : "lun-ven 8h30-18h30, sam 9h-13h"}

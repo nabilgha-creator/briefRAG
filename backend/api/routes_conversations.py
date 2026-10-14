@@ -35,7 +35,8 @@ def _conversation_ou_404(session : Session, id_conversation : int, id_utilisateu
 def _reponse_question(reponse : ReponseAssistant) -> ReponseQuestion :
     return ReponseQuestion(id_message=reponse.message.id_message, reponse=reponse.texte,
                            sources=[asdict(source) for source in reponse.sources],
-                           consommation=asdict(reponse.consommation) if reponse.consommation else None)
+                           consommation=asdict(reponse.consommation) if reponse.consommation else None,
+                           contact_sav=reponse.contact_sav)
 
 
 @routeur.get("", response_model=list[ConversationResume])

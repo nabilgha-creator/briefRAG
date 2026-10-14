@@ -11,7 +11,10 @@ Règles :
 - En cas de contradiction : un bulletin technique prévaut sur le référentiel des codes erreur, qui prévaut sur les manuels. Signale la contradiction.
 - Distingue ce que le client peut faire lui-même de ce qui demande un technicien.
 - Cite tes sources par leur numéro entre crochets, par exemple [1] ou [2][3].
-- Réponds en français, de façon concise et structurée (étapes numérotées pour une procédure), sans emoji."""
+- Réponds en français, de façon concise et structurée (étapes numérotées pour une procédure), sans emoji.
+- Si ta réponse oriente vers un technicien ou le service après-vente, ou si l'information manque dans les sources, termine par une dernière ligne contenant seulement [SAV]."""
+
+MARQUEUR_SAV = "[SAV]"         # retiré de la réponse par assistant.py : il affiche le bouton « Contacter le SAV »
 
 MESSAGE_PRECISION_MODELE = ("La signification de ce code erreur dépend de l'appareil. Pouvez-vous préciser le modèle "
                             "(par exemple WX-500, LV-200 ou FR-700, indiqué sur l'étiquette signalétique) ?")
