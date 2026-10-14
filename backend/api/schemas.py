@@ -109,6 +109,8 @@ class Source(BaseModel) :
     pages : list[int] = []
     extrait : str = ""
     distance : float | None = None      # None : donnée exacte (fiche erreur)
+    document : str | None = None        # fichier a ouvrir dans le lecteur
+    id_chunk : int | None = None        # passage a surligner (cf. GET /documents/passages/{id_chunk})
 
 
 class MessagePublic(DepuisORM) :
@@ -154,3 +156,21 @@ class ReponseQuestion(BaseModel) :
     reponse : str
     sources : list[Source]
     consommation : Consommation | None
+
+
+## LECTEUR DE DOCUMENTS ##
+
+class Apercu(BaseModel) :
+    """aperçu HTML d'un document docx, xlsx ou html (les pdf s'ouvrent avec GET /documents/fichier)"""
+    source : str
+    titre : str
+    categorie : str
+    html : str
+
+
+class Passage(BaseModel) :
+    """texte d'un chunk, sans sa ligne de contexte : le lecteur le retrouve dans le document pour le surligner"""
+    id_chunk : int
+    source : str
+    pages : list[int]
+    texte : str

@@ -72,6 +72,11 @@ def lister_documents(session : Session) -> list[Document] :
     return list(session.scalars(select(Document).order_by(Document.source)))
 
 
+def get_document_par_categorie(session : Session, categorie : str) -> Document | None :
+    """le premier document de cette catégorie (le référentiel des codes erreur est seul dans la sienne), ou None"""
+    return session.scalars(select(Document).where(Document.categorie == categorie).order_by(Document.source)).first()
+
+
 def supprimer_document(session : Session, document : Document) -> None :
     """supprime un document, ses chunks et leurs liens modele / erreur partent avec (cascade)"""
     logger.info("suppression du document %s (version %s)", document.source, document.version)
@@ -134,6 +139,11 @@ def ajouter_chunks(session : Session, document : Document, chunks : list[ChunkAC
 
     logger.info("%d chunks ajoutés au document %s", len(nouveaux), document.titre)
     return nouveaux
+
+
+def get_chunk(session : Session, id_chunk : int) -> Chunk | None :
+    """un chunk et son document, ou None (les identifiants changent quand un document est réingéré)"""
+    return session.scalars(select(Chunk).where(Chunk.id_chunk == id_chunk).options(selectinload(Chunk.rel_document))).one_or_none()
 
 
 ## RECHERCHE ##

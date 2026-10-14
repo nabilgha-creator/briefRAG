@@ -6,6 +6,8 @@ bulletins techniques, garanties, FAQ, référentiel des codes erreur) et cite se
 
 - **RAG** : recherche par vecteurs (bge-m3 + pgvector) et fiches erreur exactes, réponse rédigée par un LLM via OpenRouter
 - **Réponses en streaming**, sources numérotées avec extrait, fichier et pages
+- **Lecteur de documents** : un clic sur une source ouvre le document (manuel PDF, procédure, FAQ, référentiel)
+  au passage cité, surligné ; les droits de lecture des rôles s'appliquent aussi aux fichiers
 - **Conversations enregistrées**, comptes utilisateurs, administration et journal des connexions
 - **Front Vue.js** animé, thème sombre / clair
 

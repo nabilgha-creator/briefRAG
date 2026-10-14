@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
 
 from backend.config import CATEGORIE_REFERENTIEL
-from backend.database.crud import lister_erreurs, lister_modeles, rechercher_chunks
+from backend.database.crud import get_document_par_categorie, lister_erreurs, lister_modeles, rechercher_chunks
 from backend.database.models import Chunk, Erreur, Modele
 from backend.rag.embeddings import vectoriser_question
 
@@ -52,6 +52,7 @@ class Extrait :
     pages : list[int]
     contenu : str
     distance : float
+    id_chunk : int | None = None
 
 
 @dataclass
@@ -63,6 +64,8 @@ class Reference :
     pages : list[int] = field(default_factory=list)
     extrait : str = ""                  # début du texte de la source
     distance : float | None = None      # distance cosinus a la question ; None = donnée exacte (fiche erreur)
+    document : str | None = None        # fichier a ouvrir dans le lecteur (source du document) ; None = aucun
+    id_chunk : int | None = None        # passage a surligner dans ce fichier (extraits seulement)
 
 
 @dataclass
@@ -71,6 +74,7 @@ class Contexte :
     codes : list[str]
     fiches : list[FicheErreur]
     extraits : list[Extrait]
+    source_referentiel : str | None = None      # fichier du référentiel, ouvert par le lecteur pour une fiche erreur
 
     @property
     def besoin_precision(self) -> bool :
@@ -79,9 +83,11 @@ class Contexte :
 
     def references(self) -> list[Reference] :
         fiches = [Reference(fiche.numero, f"Référentiel des codes erreur — fiche {fiche.code}", "table erreur",
-                            extrait=f"{fiche.signification}. Intervention : {fiche.intervention}") for fiche in self.fiches]
+                            extrait=f"{fiche.signification}. Intervention : {fiche.intervention}", document=self.source_referentiel)
+                  for fiche in self.fiches]
         return fiches + [Reference(extrait.numero, extrait.titre_document, extrait.source, extrait.pages,
-                                   extrait=_apercu(extrait.contenu), distance=round(extrait.distance, 3)) for extrait in self.extraits]
+                                   extrait=_apercu(extrait.contenu), distance=round(extrait.distance, 3),
+                                   document=extrait.source, id_chunk=extrait.id_chunk) for extrait in self.extraits]
 
 
 TAILLE_APERCU = 220
@@ -218,10 +224,12 @@ def rechercher_contexte(session : Session, question : str, questions_precedentes
         textes_vus.add(texte_sans_titre)
     ordonnes = list(retenus.values())
     extraits = [Extrait(len(fiches) + index + 1, chunk.rel_document.titre, chunk.rel_document.source, chunk.pages or [],
-                        chunk.contenu, distance)
+                        chunk.contenu, distance, chunk.id_chunk)
                 for index, (chunk, distance) in enumerate(ordonnes)]
+    referentiel = get_document_par_categorie(session, CATEGORIE_REFERENTIEL) if fiches else None
 
     logger.info("contexte : appareil %s | codes %s | %d fiche(s) | %d extrait(s) (distances %s)",
                 appareils.modele or appareils.type_appareil or "inconnu", codes or "-", len(fiches), len(extraits),
                 [round(extrait.distance, 2) for extrait in extraits])
-    return Contexte(appareils=appareils, codes=codes, fiches=fiches, extraits=extraits)
+    return Contexte(appareils=appareils, codes=codes, fiches=fiches, extraits=extraits,
+                    source_referentiel=referentiel.source if referentiel else None)
