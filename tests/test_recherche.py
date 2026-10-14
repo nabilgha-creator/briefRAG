@@ -94,6 +94,18 @@ def test_references_numerotees_fiches_puis_extraits() :
     assert (extrait.numero, extrait.distance, extrait.extrait) == (2, 0.4, "Texte")
 
 
+def test_references_disent_quoi_ouvrir_dans_le_lecteur() :
+    contexte = Contexte(
+        appareils=Appareils(modele="WX-500", modeles=["WX-500"]), codes=["E52"],
+        fiches=[FicheErreur(1, "E52", "Sonde", "Contacter le SAV", "Remplacer la sonde", ["WX-500"])],
+        extraits=[Extrait(2, "Manuel WX-500", "Manuels/Manuel_WX-500.pdf", [8], "[Manuel] WX-500\nTexte", 0.4, id_chunk=42)],
+        source_referentiel="Referentiel_codes_erreur.xlsx",
+    )
+    fiche, extrait = contexte.references()
+    assert (fiche.document, fiche.id_chunk) == ("Referentiel_codes_erreur.xlsx", None)     # la fiche ouvre le référentiel
+    assert (extrait.document, extrait.id_chunk) == ("Manuels/Manuel_WX-500.pdf", 42)
+
+
 def test_apercu_sans_ligne_de_contexte_et_tronque() :
     assert _apercu("[Manuel] Titre du document\nPremière phrase. Seconde phrase.") == "Première phrase. Seconde phrase."
     long = _apercu("[x] titre\n" + "mot " * 200)

@@ -1,5 +1,5 @@
 """prompts, citations, droits de lecture et titres de conversation (sans base ni LLM)"""
-from backend.auth.droits import categories_autorisees
+from backend.auth.droits import categories_autorisees, peut_lire
 from backend.database.crud_conversations import titre_depuis_question
 from backend.database.models import Role, Utilisateur
 from backend.rag.assistant import references_citees
@@ -63,6 +63,12 @@ def test_conseiller_voit_l_union_des_categories_de_ses_roles() :
 
 def test_conseiller_sans_role_ne_voit_rien() :
     assert categories_autorisees(Utilisateur(role="conseiller", rel_role=[])) == []
+
+
+def test_peut_lire_selon_les_roles() :
+    conseiller = Utilisateur(role="conseiller", rel_role=[Role(nom="A", categories=["FAQ"])])
+    assert peut_lire(conseiller, "FAQ") and not peut_lire(conseiller, "Manuel")
+    assert peut_lire(Utilisateur(role="admin", rel_role=[]), "Manuel")
 
 
 ## TITRE DE CONVERSATION ##
