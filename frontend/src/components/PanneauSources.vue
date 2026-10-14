@@ -1,18 +1,24 @@
 <script setup>
-// sources de la réponse sélectionnée : type, titre, extrait, fichier et pages
+// sources de la réponse sélectionnée : type, titre, extrait, fichier et pages ; un clic ouvre le document au passage
 // (la distance cosinus reste dans les données de l'API pour le diagnostic, elle n'est pas affichée au conseiller)
 import { nextTick, ref, watch } from 'vue'
 
 import Icone from './Icone.vue'
-import { pagesLisibles, typeSource } from '@/utils/format'
+import { fichierDeSource, pagesLisibles, typeSource } from '@/utils/format'
 
 const props = defineProps({
   sources: { type: Array, default: () => [] },
   sourceActive: { type: Number, default: null },
 })
-const emit = defineEmits(['choisir', 'fermer'])     // fermer : en mode tiroir (écran < 1200 px)
+const emit = defineEmits(['choisir', 'ouvrir', 'fermer'])     // fermer : en mode tiroir (écran < 1200 px)
 
 const elements = ref({})
+
+// une source ouvrable s'ouvre dans le lecteur ; sinon (ancienne fiche erreur) le clic la met seulement en évidence
+function cliquer(source) {
+  if (fichierDeSource(source)) emit('ouvrir', source)
+  else emit('choisir', source.numero)
+}
 
 function emplacement(source) {
   const pages = pagesLisibles(source.pages)
@@ -46,7 +52,8 @@ watch(() => props.sourceActive, async (numero) => {
       <button v-for="(source, index) in sources" :key="`${source.numero}-${source.source}`"
               :ref="(element) => { if (element) elements[source.numero] = element }"
               type="button" class="source" :class="{ active: source.numero === sourceActive }"
-              :style="{ transitionDelay: `${index * 0.05}s` }" @click="emit('choisir', source.numero)">
+              :style="{ transitionDelay: `${index * 0.05}s` }" :aria-label="fichierDeSource(source) ? `Ouvrir la source ${source.numero} au passage cité : ${source.titre}` : undefined"
+              @click="cliquer(source)">
         <span class="ligne">
           <span class="pastille">{{ source.numero }}</span>
           <span class="type">{{ typeSource(source.source) }}</span>
@@ -54,6 +61,10 @@ watch(() => props.sourceActive, async (numero) => {
         <span class="titre">{{ source.titre }}</span>
         <span v-if="source.extrait" class="extrait">{{ source.extrait }}</span>
         <span class="mono chemin">{{ emplacement(source) }}</span>
+        <span v-if="fichierDeSource(source)" class="ouvrir">
+          <Icone nom="livre" :taille="15" />
+          Ouvrir au passage
+        </span>
       </button>
     </TransitionGroup>
   </aside>
@@ -182,6 +193,22 @@ h2 {
 
 .chemin {
   overflow-wrap: anywhere;
+}
+
+.ouvrir {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--acc-texte);
+  opacity: 0.75;
+  transition: opacity 0.2s;
+}
+
+.source:hover .ouvrir,
+.source:focus-visible .ouvrir {
+  opacity: 1;
 }
 
 .source-enter-active {

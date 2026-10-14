@@ -1,5 +1,5 @@
 /** une fonction par route de l'API (cf. http://localhost:8000/docs) */
-import { flux, requete } from './client'
+import { binaire, flux, requete, telecharger } from './client'
 
 export const apiAuth = {
   connexion: (identifiant, motDePasse) => requete('POST', '/auth/connexion', { identifiant, mot_de_passe: motDePasse }),
@@ -32,4 +32,16 @@ export const apiUtilisateurs = {
   modifier: (id, champs) => requete('PATCH', `/utilisateurs/${id}`, champs),
   supprimer: (id) => requete('DELETE', `/utilisateurs/${id}`),
   journal: (limite = 100) => requete('GET', `/utilisateurs/connexions?limite=${limite}`),
+}
+
+const parametreSource = (source) => `source=${encodeURIComponent(source)}`
+
+export const apiDocuments = {
+  /** fichier d'origine (ArrayBuffer), pour le lecteur pdf */
+  fichier: (source) => binaire(`/documents/fichier?${parametreSource(source)}`),
+  /** aperçu HTML d'un document docx, xlsx ou html : { source, titre, categorie, html } */
+  apercu: (source) => requete('GET', `/documents/apercu?${parametreSource(source)}`),
+  /** texte complet d'un extrait cité : { id_chunk, source, pages, texte } */
+  passage: (idChunk) => requete('GET', `/documents/passages/${idChunk}`),
+  telecharger: (source) => telecharger(`/documents/fichier?${parametreSource(source)}&telechargement=true`, source.split('/').at(-1)),
 }

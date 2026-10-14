@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import Icone from '@/components/Icone.vue'
@@ -26,6 +26,15 @@ const sourcesOuvertes = ref(false)       // tiroir des sources (écrans < 1200 p
 function choisirSource(idMessage, numero) {
   conversations.choisirSource(idMessage, numero)
   sourcesOuvertes.value = true
+}
+
+// lecteur de document ouvert sur une source (clic dans le panneau des sources) ; chargé a la première ouverture
+const LecteurDocument = defineAsyncComponent(() => import('@/components/LecteurDocument.vue'))
+const sourceLue = ref(null)
+
+function ouvrirSource(source) {
+  if (conversations.sourceActive !== source.numero) conversations.choisirSource(conversations.idMessageSources, source.numero)
+  sourceLue.value = source
 }
 
 const SUGGESTIONS = [
@@ -137,7 +146,10 @@ function estSelectionne(message) {
     </Transition>
     <PanneauSources id="panneau-sources" :class="{ ouvert: sourcesOuvertes }" :sources="conversations.sources"
                     :source-active="conversations.sourceActive" @fermer="sourcesOuvertes = false"
-                    @choisir="(numero) => conversations.choisirSource(conversations.idMessageSources, numero)" />
+                    @choisir="(numero) => conversations.choisirSource(conversations.idMessageSources, numero)"
+                    @ouvrir="ouvrirSource" />
+
+    <LecteurDocument v-if="sourceLue" :source="sourceLue" @fermer="sourceLue = null" />
   </div>
 </template>
 

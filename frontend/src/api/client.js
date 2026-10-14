@@ -56,6 +56,31 @@ export async function requete(methode, chemin, corps) {
   return reponse.status === 204 ? null : reponse.json()
 }
 
+async function recuperer(chemin) {
+  let reponse
+  try {
+    reponse = await fetch(BASE + chemin, { headers: entetes(false) })
+  } catch {
+    throw new ErreurApi(0, "impossible de joindre le serveur : l'API est-elle démarrée ?")
+  }
+  return verifier(reponse)
+}
+
+/** fichier binaire (pdf du lecteur) : un lien ou un iframe ne peuvent pas envoyer l'en-tête d'authentification */
+export async function binaire(chemin) {
+  return (await recuperer(chemin)).arrayBuffer()
+}
+
+/** télécharge un fichier protégé : récupéré avec le jeton, puis enregistré via un lien temporaire */
+export async function telecharger(chemin, nomFichier) {
+  const url = URL.createObjectURL(await (await recuperer(chemin)).blob())
+  const lien = Object.assign(document.createElement('a'), { href: url, download: nomFichier })
+  document.body.append(lien)
+  lien.click()
+  lien.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 /**
  * requête dont la réponse arrive en server-sent events ("event: nom" + "data: {json}").
  * EventSource ne permet ni POST ni en-tête d'authentification : on lit le flux avec fetch.

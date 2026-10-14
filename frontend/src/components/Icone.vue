@@ -26,6 +26,9 @@ const TRACES = {
   copier: ['M9 9h11v11H9z', 'M5 15V6a2 2 0 0 1 2-2h9'],
   sources: ['M6 3h9l4 4v14H6z', 'M14 3v5h5', 'M9 13h7', 'M9 17h5'],
   menu: ['M4 6h16', 'M4 12h16', 'M4 18h16'],
+  livre: ['M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z', 'M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z'],
+  telecharger: ['M12 3v12', 'M7 10l5 5 5-5', 'M5 21h14'],
+  cible: ['M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z', 'M12 2v3', 'M12 19v3', 'M2 12h3', 'M19 12h3'],
 }
 </script>
 

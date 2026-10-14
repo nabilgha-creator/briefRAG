@@ -62,6 +62,14 @@ export function typeSource(source) {
   return source.endsWith('.xlsx') ? 'RÉFÉRENTIEL' : 'DOCUMENT'
 }
 
+/**
+ * fichier qu'ouvre le lecteur pour une source : celui indiqué par l'API, ou a défaut (sources des conversations
+ * antérieures au lecteur) la source elle-même ; null pour une fiche erreur ancienne (aucun fichier connu)
+ */
+export function fichierDeSource(source) {
+  return source.document ?? (source.source !== 'table erreur' ? source.source : null)
+}
+
 export function pagesLisibles(pages) {
   if (!pages?.length) return ''
   return pages.length === 1 ? `p. ${pages[0]}` : `p. ${pages[0]}-${pages.at(-1)}`

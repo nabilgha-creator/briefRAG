@@ -26,6 +26,8 @@
   --acc-fond: #2a2312;
   --acc-fond2: #1d1a12;
   --halo: rgba(242, 150, 60, 0.24);
+  --surlignage: rgba(249, 210, 92, 0.45);       /* passage cité, dans le lecteur de documents */
+  --surlignage-ligne: rgba(249, 210, 92, 0.14);
   --degrade: linear-gradient(135deg, #f9d25c 0%, #f2843a 100%);
   --succes: #5fd39a;
   --erreur: #ff8f8f;
@@ -62,6 +64,8 @@
   --acc-fond: #ddf3ef;
   --acc-fond2: #eef9f6;
   --halo: rgba(11, 122, 118, 0.2);
+  --surlignage: rgba(18, 230, 95, 0.32);
+  --surlignage-ligne: rgba(18, 230, 95, 0.12);
   --degrade: linear-gradient(135deg, #0b7a76 0%, #12e65f 100%);
   --succes: #12e65f;
   --erreur: #b42318;
