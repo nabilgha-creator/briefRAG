@@ -17,6 +17,15 @@ export function markdownEnHtml(texte) {
   )
 }
 
+const RE_SAV = /\s*\[SAV\]/g
+const RE_SAV_PARTIEL = /\s*\[(?:S(?:AV?)?)?$/       // début du marqueur arrivé en fin de flux : "[", "[S", "[SA"
+
+/** texte sans le marqueur [SAV] du LLM (le serveur le retire aussi a l'enregistrement) */
+export function sansMarqueurSav(texte, enCours = false) {
+  const propre = (texte ?? '').replace(RE_SAV, '')
+  return enCours ? propre.replace(RE_SAV_PARTIEL, '') : propre
+}
+
 /** texte affiché pendant le streaming, avant mise en forme : sans les marques markdown */
 export function texteSansMarques(texte) {
   return texte

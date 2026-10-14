@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { apiConversations } from '@/api/routes'
+import { sansMarqueurSav } from '@/utils/format'
 
 const DELAI_RECHERCHE = 700      // ms avant d'afficher l'étape "recherche" (la rédaction démarre au 1er morceau reçu)
 
@@ -92,8 +93,8 @@ export const useConversationsStore = defineStore('conversations', {
               this.phase = 'redaction'
               reponse.contenu += texte
             },
-            fin: ({ id_message, sources, consommation }) => {
-              Object.assign(reponse, { id_message, sources, consommation, enCours: false })
+            fin: ({ id_message, sources, consommation, contact_sav }) => {
+              Object.assign(reponse, { id_message, sources, consommation, contact_sav, enCours: false, contenu: sansMarqueurSav(reponse.contenu) })
               this.idMessageSources = id_message
               this.sourceActive = null
             },

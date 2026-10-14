@@ -34,6 +34,12 @@ export const apiUtilisateurs = {
   journal: (limite = 100) => requete('GET', `/utilisateurs/connexions?limite=${limite}`),
 }
 
+let contactSav = null          // coordonnées du SAV : une seule requête, partagée par tous les messages
+
+export const apiSav = {
+  contact: () => (contactSav ??= requete('GET', '/sav').catch((erreur) => { contactSav = null; throw erreur })),
+}
+
 const parametreSource = (source) => `source=${encodeURIComponent(source)}`
 
 export const apiDocuments = {

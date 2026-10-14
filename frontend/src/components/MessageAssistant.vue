@@ -1,10 +1,11 @@
 <script setup>
 // streaming : paragraphes terminés en markdown, paragraphe en cours mot a mot en fondu ; a la fin tout en markdown
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import EtapesRecherche from './EtapesRecherche.vue'
 import Icone from './Icone.vue'
-import { markdownEnHtml, texteSansMarques } from '@/utils/format'
+import { apiSav } from '@/api/routes'
+import { markdownEnHtml, sansMarqueurSav, texteSansMarques } from '@/utils/format'
 
 const props = defineProps({
   message: { type: Object, required: true },
@@ -16,10 +17,11 @@ const emit = defineEmits(['choisir-source'])
 
 const enAttente = computed(() => props.message.enCours && !props.message.contenu)
 
+const contenu = computed(() => sansMarqueurSav(props.message.contenu, props.message.enCours))
+
 const decoupage = computed(() => {
-  const contenu = props.message.contenu ?? ''
-  if (!props.message.enCours) return { termine: contenu, courant: '' }
-  const blocs = contenu.split(/\n{2,}/)
+  if (!props.message.enCours) return { termine: contenu.value, courant: '' }
+  const blocs = contenu.value.split(/\n{2,}/)
   return { termine: blocs.slice(0, -1).join('\n\n'), courant: blocs.at(-1) }
 })
 
@@ -37,12 +39,33 @@ function clic(evenement) {
   if (bouton) emit('choisir-source', Number(bouton.dataset.source))
 }
 
-async function copier() {
+async function copier(texte = contenu.value) {
   try {
-    await navigator.clipboard.writeText(props.message.contenu)
+    await navigator.clipboard.writeText(texte)
+    return true
   } catch {
-    // presse-papiers indisponible (contexte non sécurisé) : rien a faire
+    return false          // presse-papiers indisponible (contexte non sécurisé)
   }
+}
+
+// bouton « Contacter le SAV » : réponse qui oriente vers le SAV (marqueur [SAV] du LLM)
+const contactOuvert = ref(false)
+const contact = ref(null)
+const numeroCopie = ref(false)
+
+async function basculerContact() {
+  contactOuvert.value = !contactOuvert.value
+  if (!contactOuvert.value || contact.value?.telephone) return
+  try {
+    contact.value = await apiSav.contact()
+  } catch {
+    contact.value = { erreur: true }
+  }
+}
+
+async function copierNumero() {
+  numeroCopie.value = await copier(contact.value.telephone)
+  setTimeout(() => { numeroCopie.value = false }, 1500)
 }
 </script>
 
@@ -65,6 +88,22 @@ async function copier() {
         <Icone nom="copier" :taille="16" />
       </button>
       <span v-if="message.sources?.length" class="mono compte">{{ message.sources.length }} source{{ message.sources.length > 1 ? 's' : '' }} citée{{ message.sources.length > 1 ? 's' : '' }}</span>
+      <button v-if="message.contact_sav" type="button" class="bouton-sav" :aria-expanded="contactOuvert" @click="basculerContact">
+        <Icone nom="telephone" :taille="15" />
+        Contacter le SAV
+      </button>
+    </div>
+
+    <div v-if="contactOuvert" class="contact-sav apparition" role="region" aria-label="Coordonnées du SAV client">
+      <template v-if="contact?.telephone">
+        <span class="mono numero">{{ contact.telephone }}</span>
+        <span class="details">{{ contact.mention }} · {{ contact.horaires }}</span>
+        <button type="button" class="bouton-icone petit" :aria-label="numeroCopie ? 'Numéro copié' : 'Copier le numéro'" @click="copierNumero">
+          <Icone :nom="numeroCopie ? 'coche' : 'copier'" :taille="15" />
+        </button>
+      </template>
+      <span v-else-if="contact?.erreur" class="details">Coordonnées indisponibles pour le moment.</span>
+      <span v-else class="details">Chargement…</span>
     </div>
   </article>
 </template>
@@ -112,6 +151,49 @@ async function copier() {
 .compte {
   font-size: 11px;
   color: var(--discret);
+}
+
+.bouton-sav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  margin-left: auto;
+  padding: 0 12px;
+  border: 1.5px solid var(--acc2);
+  border-radius: 999px;
+  background-color: var(--acc-fond2);
+  color: var(--acc-texte);
+  font-size: 13px;
+  font-weight: 700;
+  transition: background-color 0.2s;
+}
+
+.bouton-sav:hover {
+  background-color: var(--acc-fond);
+}
+
+.contact-sav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  padding: 10px 10px 10px 16px;
+  border: 1px solid var(--bordure);
+  border-radius: 12px;
+  background-color: var(--acc-fond2);
+}
+
+.numero {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--texte);
+}
+
+.details {
+  flex: 1;
+  font-size: 13px;
+  color: var(--doux);
 }
 
 /* mise en forme du markdown rendu (v-html : styles en :deep) */
