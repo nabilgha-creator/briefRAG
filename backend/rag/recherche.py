@@ -17,7 +17,7 @@ from backend.rag.embeddings import vectoriser_question
 
 logger = logging.getLogger(__name__)
 
-RE_CODE_ERREUR = re.compile(r"\b[Ee]\s?(\d{2})\b")     # E23, e23, E 23
+RE_CODE_ERREUR = re.compile(r"\b[Ee]\s?(\d{2})\b")       # E23, e23, E 23
 NB_EXTRAITS = 5                                          # extraits les plus proches
 NB_EXTRAITS_LIES_AUX_ERREURS = 3                         # extraits liés aux erreurs citées, en plus
 SEUIL_DISTANCE = 0.55                                    # au-delà, un extrait est jugé hors sujet (distance cosinus ;
